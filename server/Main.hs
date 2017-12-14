@@ -35,20 +35,13 @@ data Vector2D = Vector2D { x :: Double, y :: Double } deriving (Show)
 addVec2D :: Vector2D -> Vector2D -> Vector2D
 addVec2D v1 v2 = Vector2D ((x v1) + (x v2)) ((y v1) + (y v2))
 
-update :: World -> Second -> Second -> World
-update world timeSinceStart delta = world { objects = os' }
+update :: World -> Second -> World
+update world dt = world { objects = os' }
     where os' = map updateObject os
           os  = objects world
           updateObject o = o { pos = addVec2D (pos o) (vel o) }
 
 type Second = Double
-
-updateLoop :: World -> Second -> Second -> Second -> (World, World, Second, Second)
-updateLoop world timeSinceStart delta timeRemaining =
-    let world' = update world timeSinceStart delta
-    in if timeRemaining >= delta
-       then updateLoop world' (timeSinceStart + delta) delta (timeRemaining - delta)
-       else (world', world, timeSinceStart, timeRemaining)
 
 serialize :: World -> T.Text
 serialize w = T.concat $ map (T.pack . show) (objects w)
@@ -56,15 +49,17 @@ serialize w = T.concat $ map (T.pack . show) (objects w)
 display :: WS.Connection -> World -> IO ()
 display conn world = WS.sendTextData conn (serialize world)
 
-gameLoop :: World -> Second -> Second -> Second -> Second -> WS.Connection -> EventPipe -> IO ()
-gameLoop world elapsedTime delta currentTime acc conn input = do
-  newTime <- getTimeInSeconds
-  putStrLn $ printf "Current loop time stamp %.4f" newTime
-  let frameTime = max 0.25 $ newTime - currentTime
-      (previousWorld, currentWorld, elapsedTime', acc') =
-        updateLoop world elapsedTime delta (acc + frameTime)
-  display conn currentWorld
-  gameLoop currentWorld elapsedTime' delta newTime acc' conn input
+gameLoop :: World -> Second -> Second -> WS.Connection -> EventPipe -> IO ()
+gameLoop world beginTime dt conn input = do
+  let world' = update world dt
+  display conn world'
+
+  endTime <- getTimeInSeconds
+  let dt' = endTime - beginTime
+  when (dt' < frameTime) $ do
+    let sleepTime = floor ((frameTime - dt') * (10 ** 6))
+    threadDelay sleepTime
+  gameLoop world' endTime dt conn input
 
 getTimeInSeconds :: IO Double
 getTimeInSeconds = do
@@ -76,10 +71,13 @@ newWorld = World [ Object pos vel ]
     where pos = Vector2D 0.0 0.0
           vel = Vector2D 1.0 0.0
 
+-- Fixed 3 FPS
+frameTime = 1.0 / 3.0
+
 newGame :: IO (WS.Connection -> EventPipe -> IO ())
 newGame = do
   time <- getTimeInSeconds
-  return $ gameLoop newWorld 0.0 0.1 time 0.0
+  return $ gameLoop newWorld time frameTime
 
 runEventPipe :: Producer -> Consumer -> IO ()
 runEventPipe prod cons = do
@@ -90,6 +88,7 @@ runEventPipe prod cons = do
 
 main :: IO ()
 main = do
+  putStrLn "Hello, World!"
   app <- application
   Warp.runSettings (Warp.setPort 3000 Warp.defaultSettings)
     $ WaiWS.websocketsOr WS.defaultConnectionOptions wsapp app

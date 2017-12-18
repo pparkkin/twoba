@@ -23,6 +23,7 @@ dependencies:
 - aeson
 - bytestring
 - linear
+- random
 - scotty
 - text
 - wai-extra

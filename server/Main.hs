@@ -12,6 +12,7 @@ import Control.Concurrent
 import Control.Monad
 import System.CPUTime
 import System.IO
+import System.Random ( getStdGen )
 import Text.Printf
 
 import Game
@@ -50,7 +51,8 @@ frameTime = 1.0 / 3.0
 newGame :: IO (WS.Connection -> EventPipe -> IO ())
 newGame = do
   time <- getTimeInSeconds
-  return $ gameLoop (newWorld :: World) time frameTime
+  seed <- getStdGen
+  return $ gameLoop (newWorld seed :: World) time frameTime
 
 runEventPipe :: Producer -> Consumer -> IO ()
 runEventPipe prod cons = do

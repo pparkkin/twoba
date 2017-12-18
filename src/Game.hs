@@ -12,6 +12,7 @@ import Data.Aeson ( ToJSON
                   , encode
                   )
 import Linear.V2 ( V2(V2) )
+import System.Random ( RandomGen )
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C8
@@ -44,7 +45,7 @@ type Second = Double
 
 class Game a where
   update :: a -> Second -> a
-  newWorld :: a
+  newWorld :: RandomGen g => g -> a
 
 instance Game World where
   update world dt = world { objects = os' }
@@ -52,6 +53,6 @@ instance Game World where
       os' = map updateObject os
       os  = objects world
       updateObject o = o { pos = (pos o) + (vel o) }
-  newWorld = World [ Object pos vel ]
+  newWorld seed = World [ Object pos vel ]
     where pos = V2 0.0 0.0
-          vel = V2 1.0 0.0
+          vel = V2 0.0 0.0

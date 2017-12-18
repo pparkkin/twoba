@@ -3,6 +3,11 @@
 import Web.Scotty
 import qualified Network.Wai.Handler.Warp as Warp
 import Network.Wai.Middleware.RequestLogger
+import Network.Wai.Middleware.Static ( staticPolicy
+                                     , noDots
+                                     , addBase
+                                     , (>->)
+                                     )
 import Control.Monad (forever)
 import qualified Data.Text as T
 import qualified Network.WebSockets as WS
@@ -70,6 +75,7 @@ main = do
 
 application = scottyApp $ do
   middleware logStdoutDev
+  middleware $ staticPolicy (noDots >-> addBase "front")
   get "/" $ file "front/index.html"
 
 wsapp :: WS.ServerApp

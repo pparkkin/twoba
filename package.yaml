@@ -28,6 +28,7 @@ dependencies:
 - split
 - text
 - wai-extra
+- wai-middleware-static
 - wai-websockets
 - warp
 - websockets

@@ -11,8 +11,12 @@ import Data.Aeson ( ToJSON
                   , (.=)
                   , encode
                   )
+import Data.List ( find )
+import Data.List.Split ( chunksOf )
 import Linear.V2 ( V2(V2) )
-import System.Random ( RandomGen )
+import System.Random ( RandomGen
+                     , randomRs
+                     )
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C8
@@ -20,14 +24,13 @@ import qualified Data.ByteString.Lazy as BL
 
 import Serializable
 
-data World = World {
-      objects :: [ Object ]
-} deriving ( Show, Generic )
+data World = World
+  { grid :: [[ Object ]]
+  } deriving ( Show, Generic )
 
-data Object = Object {
-      pos :: Position,
-      vel :: Velocity
-} deriving ( Show, Generic )
+data Object = Live
+            | Dead
+            deriving ( Show, Generic )
 
 type Position = V2 Double
 type Velocity = V2 Double
@@ -47,12 +50,54 @@ class Game a where
   update :: a -> Second -> a
   newWorld :: RandomGen g => g -> a
 
+isLive :: Object -> Bool
+isLive Live = True
+isLive Dead = False
+
+eightDirs :: [(Int, Int)]
+eightDirs =
+  filter (\(x, y) -> x /= 0 && y /= 0) [
+    (x, y) | x <- [-1, 0, 1], y <- [-1, 0, 1]
+  ]
+
+neighborCoords :: (Int, Int) -> [(Int, Int)]
+neighborCoords (x, y) =
+  map (\(x', y') -> (x + x', y + y')) eightDirs
+
+cellAt :: World -> (Int, Int) -> Object
+cellAt (World os) (x, y) =
+  if (x < 0 || y < 0) || (x > 19 || y > 19)
+    then Dead
+    else (os !! y) !! x
+
+neighbors :: World -> (Int, Int) -> [Object]
+neighbors w = map (cellAt w) . neighborCoords
+
+updateCell :: World -> Int -> Int -> Object -> Object
+updateCell w x y c =
+  let
+    ns = neighbors w (x, y)
+    ls = filter isLive ns
+  in
+    case c of
+      Live | length ls < 2 -> Dead
+           | length ls > 3 -> Dead
+           | otherwise -> Live
+      Dead | length ls == 3 -> Live
+           | otherwise -> Dead
+
+updateRow :: World -> Int -> [Object] -> [Object]
+updateRow w y os =
+  map (\(x, c) -> updateCell w x y c) (zip [0..] os)
+
+updateGrid :: World -> World
+updateGrid w@(World rs) =
+  World $ map (\(y, r) -> updateRow w y r) (zip [0..] rs)
+
 instance Game World where
-  update world dt = world { objects = os' }
+  update world _ = updateGrid world
+  newWorld seed = World (chunksOf 20 cells)
     where
-      os' = map updateObject os
-      os  = objects world
-      updateObject o = o { pos = (pos o) + (vel o) }
-  newWorld seed = World [ Object pos vel ]
-    where pos = V2 0.0 0.0
-          vel = V2 0.0 0.0
+      cells = map (kill 0.7) (take (20 * 20) rs)
+      rs = randomRs (0,1) seed :: [Float]
+      kill p r = if r > p then Live else Dead

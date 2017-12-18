@@ -25,6 +25,7 @@ dependencies:
 - linear
 - random
 - scotty
+- split
 - text
 - wai-extra
 - wai-websockets

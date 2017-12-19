@@ -4,17 +4,17 @@
     <meta charset="utf-8">
     <title>title</title>
     <link rel="stylesheet" href="style.css">
+    <script src="pixi/pixi.js"></script>
     <script src="script.js"></script>
   </head>
   <body>
-    <code><pre>
-ws = new WebSocket('ws://localhost:3000');
-ws.onmessage = function (event) {
-  console.log(event.data);
-};
-ws.onopen = function (event) {
-  console.log("Socket open!");
-  ws.send("Hello, Server!")
-};
+    <script type="text/javascript">
+    let type = "WebGL"
+    if(!PIXI.utils.isWebGLSupported()){
+      type = "canvas"
+    }
+
+    PIXI.utils.sayHello(type)
+    </script>
   </body>
 </html>

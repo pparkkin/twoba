@@ -1,30 +1,52 @@
-var data = {"grid":
-  [["Dead","Dead","Dead","Dead","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Live","Dead","Live","Dead","Dead","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Live","Dead","Dead","Dead","Live","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Live","Dead","Dead","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Live","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Live","Dead","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Live","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Live","Dead","Live","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Live","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"],
-   ["Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead","Dead"]]}
+var state = null;
 
 //Aliases
 let Application = PIXI.Application,
     loader = PIXI.loader,
     resources = PIXI.loader.resources,
     Sprite = PIXI.Sprite;
+
+
+
+function render(app, data) {
+  let grid = data["grid"],
+      height = grid.length,
+      cellHeight = innerHeight / height,
+      width = grid[0].length,
+      cellWidth = innerWidth / width;
+  if (state == null) {
+    initState(width, height);
+  }
+  for (var i = 0; i < grid.length; i++) {
+    for (var j = 0; j < grid[i].length; j++) {
+      if (grid[i][j] == "Live") {
+        if (state[i][j] == null) {
+          let sprite = new Sprite(
+            resources["sprites/sprite.png"].texture
+          );
+          app.stage.addChild(sprite);
+          sprite.width = cellWidth;
+          sprite.height = cellHeight;
+          sprite.x = j * cellWidth;
+          sprite.y = i * cellHeight;
+          state[i][j] = sprite;
+        }
+      } else {
+        if (state[i][j] != null) {
+          let sprite = state[i][j];
+          app.stage.removeChild(sprite);
+        }
+      }
+    }
+  }
+}
+
+function initState(width, height) {
+  state = [];
+  for (var i = 0; i < height; i++) {
+    state.push(new Array(width));
+  }
+}
 
 function setup() {
   let app = new Application({
@@ -37,26 +59,13 @@ function setup() {
   app.renderer.resize(window.innerWidth, window.innerHeight);
   document.body.appendChild(app.view);
 
-
-  let grid = data["grid"],
-      height = grid.length,
-      cellHeight = innerHeight / height,
-      width = grid[0].length,
-      cellWidth = innerWidth / width;
-  for (var i = 0; i < grid.length; i++) {
-    for (var j = 0; j < grid[i].length; j++) {
-      if (grid[i][j] == "Live") {
-        let sprite = new Sprite(
-          resources["sprites/sprite.png"].texture
-        );
-        app.stage.addChild(sprite);
-        sprite.width = cellWidth;
-        sprite.height = cellHeight;
-        sprite.x = j * cellWidth;
-        sprite.y = i * cellHeight;
-      }
-    }
-  }
+  let ws = new WebSocket('ws://localhost:3000');
+  ws.onmessage = function (event) {
+    render(app, JSON.parse(event.data));
+  };
+  ws.onopen = function (event) {
+    console.log("Socket open!");
+  };
 }
 
 function load() {
@@ -66,14 +75,5 @@ function load() {
 }
 
 document.addEventListener("DOMContentLoaded", function(event) {
-  // ws = new WebSocket('ws://localhost:3000');
-  // ws.onmessage = function (event) {
-  //   console.log(event.data);
-  // };
-  // ws.onopen = function (event) {
-  //   console.log("Socket open!");
-  //   ws.send("Hello, Server!")
-  // };
-
   load();
 });

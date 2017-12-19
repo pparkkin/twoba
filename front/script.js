@@ -7,6 +7,18 @@ let Application = PIXI.Application,
     Sprite = PIXI.Sprite;
 
 
+function printGrid(grid) {
+  var lines = grid.map(function(row) {
+    return row.map(function(cell) {
+      if (cell == "Live") {
+        return "x";
+      } else {
+        return "o";
+      }
+    }).join('');
+  });
+  console.log(lines.join('\n'));
+}
 
 function render(app, data) {
   let grid = data["grid"],
@@ -17,28 +29,31 @@ function render(app, data) {
   if (state == null) {
     initState(width, height);
   }
-  for (var i = 0; i < grid.length; i++) {
-    for (var j = 0; j < grid[i].length; j++) {
-      if (grid[i][j] == "Live") {
+  // printGrid(grid);
+
+  grid.forEach(function(row, i) {
+    row.forEach(function(cell, j) {
+      if (cell == "Live") {
         if (state[i][j] == null) {
           let sprite = new Sprite(
             resources["sprites/sprite.png"].texture
           );
-          app.stage.addChild(sprite);
           sprite.width = cellWidth;
           sprite.height = cellHeight;
           sprite.x = j * cellWidth;
           sprite.y = i * cellHeight;
           state[i][j] = sprite;
+          app.stage.addChild(sprite);
         }
       } else {
         if (state[i][j] != null) {
           let sprite = state[i][j];
           app.stage.removeChild(sprite);
+          state[i][j] = null;
         }
       }
-    }
-  }
+    });
+  });
 }
 
 function initState(width, height) {

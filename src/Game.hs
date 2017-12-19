@@ -3,6 +3,8 @@
 
 module Game where
 
+import Debug.Trace ( trace )
+
 import GHC.Generics
 
 import Data.Aeson ( ToJSON
@@ -30,7 +32,7 @@ data World = World
 
 data Object = Live
             | Dead
-            deriving ( Show, Generic )
+            deriving ( Show, Generic, Eq )
 
 type Position = V2 Double
 type Velocity = V2 Double
@@ -56,7 +58,7 @@ isLive Dead = False
 
 eightDirs :: [(Int, Int)]
 eightDirs =
-  filter (\(x, y) -> x /= 0 && y /= 0) [
+  filter (\(x, y) -> x /= 0 || y /= 0) [
     (x, y) | x <- [-1, 0, 1], y <- [-1, 0, 1]
   ]
 
@@ -73,9 +75,10 @@ cellAt (World os) (x, y) =
 neighbors :: World -> (Int, Int) -> [Object]
 neighbors w = map (cellAt w) . neighborCoords
 
-updateCell :: World -> Int -> Int -> Object -> Object
-updateCell w x y c =
+updateCell :: World -> Int -> Int -> Object
+updateCell w x y =
   let
+    c = cellAt w (x, y)
     ns = neighbors w (x, y)
     ls = filter isLive ns
   in
@@ -88,7 +91,7 @@ updateCell w x y c =
 
 updateRow :: World -> Int -> [Object] -> [Object]
 updateRow w y os =
-  map (\(x, c) -> updateCell w x y c) (zip [0..] os)
+  map (\(x, c) -> updateCell w x y) (zip [0..] os)
 
 updateGrid :: World -> World
 updateGrid w@(World rs) =

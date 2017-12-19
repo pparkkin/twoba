@@ -1,4 +1,8 @@
 var state = null;
+var player = {
+  sprite: null,
+  location: { x: 0, y: 0 }
+};
 
 //Aliases
 let Application = PIXI.Application,
@@ -54,6 +58,17 @@ function render(app, data) {
       }
     });
   });
+
+  if (player.sprite == null) {
+    player.sprite = new Sprite(
+      resources["sprites/player-sprite.png"].texture
+    );
+    player.sprite.width = cellWidth;
+    player.sprite.height = cellHeight;
+  }
+  player.sprite.x = player.location.x * cellWidth;
+  player.sprite.y = player.location.y * cellHeight;
+  app.stage.addChild(player.sprite);
 }
 
 function initState(width, height) {
@@ -61,6 +76,13 @@ function initState(width, height) {
   for (var i = 0; i < height; i++) {
     state.push(new Array(width));
   }
+}
+
+function onMouseUp(ev) {
+  let cellWidth = window.innerWidth / 20,
+      cellHeight = window.innerHeight / 20;
+  player.location.x = Math.floor(ev.clientX/cellWidth);
+  player.location.y = Math.floor(ev.clientY/cellHeight);
 }
 
 function setup() {
@@ -74,6 +96,8 @@ function setup() {
   app.renderer.resize(window.innerWidth, window.innerHeight);
   document.body.appendChild(app.view);
 
+  window.addEventListener('mouseup', onMouseUp);
+
   let ws = new WebSocket('ws://localhost:3000');
   ws.onmessage = function (event) {
     render(app, JSON.parse(event.data));
@@ -86,6 +110,7 @@ function setup() {
 function load() {
   loader
     .add("sprites/sprite.png")
+    .add("sprites/player-sprite.png")
     .load(setup);
 }
 

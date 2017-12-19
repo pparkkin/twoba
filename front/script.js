@@ -1,7 +1,17 @@
+// State from server
 var state = null;
+// Player state
 var player = {
   sprite: null,
   location: { x: 0, y: 0 }
+};
+// List of inputs
+var input = [];
+// The current view
+var view = null;
+
+let gridDimensions = {
+  x: 20, y: 20
 };
 
 //Aliases
@@ -24,37 +34,19 @@ function printGrid(grid) {
   console.log(lines.join('\n'));
 }
 
-function render(app, data) {
-  let grid = data["grid"],
-      height = grid.length,
-      cellHeight = innerHeight / height,
-      width = grid[0].length,
-      cellWidth = innerWidth / width;
-  if (state == null) {
-    initState(width, height);
-  }
+function render(app) {
+  if (state == null) { return; }
+  let grid = state,
+      cellHeight = window.innerHeight / gridDimensions.y,
+      cellWidth = window.innerWidth / gridDimensions.x;
   // printGrid(grid);
 
   grid.forEach(function(row, i) {
     row.forEach(function(cell, j) {
       if (cell == "Live") {
-        if (state[i][j] == null) {
-          let sprite = new Sprite(
-            resources["sprites/sprite.png"].texture
-          );
-          sprite.width = cellWidth;
-          sprite.height = cellHeight;
-          sprite.x = j * cellWidth;
-          sprite.y = i * cellHeight;
-          state[i][j] = sprite;
-          app.stage.addChild(sprite);
-        }
+        view[i][j].visible = true;
       } else {
-        if (state[i][j] != null) {
-          let sprite = state[i][j];
-          app.stage.removeChild(sprite);
-          state[i][j] = null;
-        }
+        view[i][j].visible = false;
       }
     });
   });
@@ -71,18 +63,62 @@ function render(app, data) {
   app.stage.addChild(player.sprite);
 }
 
-function initState(width, height) {
-  state = [];
-  for (var i = 0; i < height; i++) {
-    state.push(new Array(width));
+function processInput() {
+  input.forEach(function(e) {
+    // console.log(e);
+    if (e.type == "playermove") {
+      player.location.x = e.x;
+      player.location.y = e.y;
+    } else if (e.type == "serverstate") {
+      state = e.data["grid"];
+    }
+  });
+  input = [];
+}
+
+function gameLoop(app) {
+  window.requestAnimationFrame(gameLoop.bind(null, app));
+  processInput();
+  render(app);
+}
+
+function initView(app) {
+  let cellHeight = window.innerHeight / gridDimensions.y,
+      cellWidth = window.innerWidth / gridDimensions.x;
+  view = [];
+  for (var i = 0; i < gridDimensions.y; i++) {
+    var row = [];
+    for (var j = 0; j < gridDimensions.x; j++) {
+      let sprite = new Sprite(
+        resources["sprites/sprite.png"].texture
+      );
+      sprite.width = cellWidth;
+      sprite.height = cellHeight;
+      sprite.x = j * cellWidth;
+      sprite.y = i * cellHeight;
+      sprite.visible = false;
+      app.stage.addChild(sprite);
+      row.push(sprite);
+    }
+    view.push(row);
   }
 }
 
 function onMouseUp(ev) {
   let cellWidth = window.innerWidth / 20,
       cellHeight = window.innerHeight / 20;
-  player.location.x = Math.floor(ev.clientX/cellWidth);
-  player.location.y = Math.floor(ev.clientY/cellHeight);
+  input.push({
+    type: "playermove",
+    x: Math.floor(ev.clientX/cellWidth),
+    y: Math.floor(ev.clientY/cellHeight)
+  });
+}
+
+function onMessage(ev) {
+  input.push({
+    type: "serverstate",
+    data: JSON.parse(ev.data)
+  });
 }
 
 function setup() {
@@ -91,7 +127,6 @@ function setup() {
   });
   app.renderer.view.style.position = "absolute";
   app.renderer.view.style.display = "block";
-  app.renderer.view.style.backgroundColor = "white";
   app.renderer.autoResize = true;
   app.renderer.resize(window.innerWidth, window.innerHeight);
   document.body.appendChild(app.view);
@@ -99,12 +134,13 @@ function setup() {
   window.addEventListener('mouseup', onMouseUp);
 
   let ws = new WebSocket('ws://localhost:3000');
-  ws.onmessage = function (event) {
-    render(app, JSON.parse(event.data));
-  };
+  ws.onmessage = onMessage;
   ws.onopen = function (event) {
     console.log("Socket open!");
   };
+
+  initView(app);
+  gameLoop(app);
 }
 
 function load() {

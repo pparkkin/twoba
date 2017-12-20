@@ -8,6 +8,9 @@ import Network.WebSockets ( Connection
                           , receiveData
                           , sendTextData )
 
+type ClientInfo = String
+
+
 testClient :: IO ()
 testClient = do
   runClient "localhost" 3000 "" start

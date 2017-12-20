@@ -21,6 +21,7 @@ import System.Random ( getStdGen )
 import Text.Printf
 
 import Game
+import Message
 import Serializable
 
 -- http://chimera.labs.oreilly.com/books/1230000000929/ch07.html
@@ -30,10 +31,10 @@ data Event = Message T.Text | Stop (MVar ())
 type Consumer = (EventPipe -> IO ())
 type Producer = (EventPipe -> IO ())
 
-display :: Serializable a => WS.Connection -> a -> IO ()
-display conn world = WS.sendTextData conn (serialize world)
+display :: WS.Connection -> World -> IO ()
+display conn world = WS.sendTextData conn (serialize (ServerState world))
 
-gameLoop :: (Serializable a, Game a) => a -> Second -> Second -> WS.Connection -> EventPipe -> IO ()
+gameLoop :: World -> Second -> Second -> WS.Connection -> EventPipe -> IO ()
 gameLoop world beginTime dt conn input = do
   let world' = update world dt
   display conn world'
@@ -91,14 +92,3 @@ echoProd :: WS.Connection -> EventPipe -> IO ()
 echoProd conn (EventPipe m) = forever $ do
   msg <- WS.receiveData conn
   putMVar m (Message msg)
-
-echoCons :: WS.Connection -> EventPipe -> IO ()
-echoCons conn (EventPipe m) = loop
-    where loop = do
-            evt <- takeMVar m
-            case evt of
-              Message msg -> do
-                       WS.sendTextData conn $ msg `T.append` " <-"
-                       loop
-              Stop s -> do
-                       putMVar s ()

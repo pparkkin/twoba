@@ -115,10 +115,15 @@ function onMouseUp(ev) {
 }
 
 function onMessage(ev) {
-  input.push({
-    type: "serverstate",
-    data: JSON.parse(ev.data)
-  });
+  var msg = JSON.parse(ev.data);
+  if (msg["tag"] == "ServerState") {
+    input.push({
+      type: "serverstate",
+      data: msg["contents"]
+    });
+  } else {
+    console.log("Got unknown message tagged '"+msg["tag"]+"'");
+  }
 }
 
 function setup() {

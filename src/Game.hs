@@ -26,13 +26,20 @@ import qualified Data.ByteString.Lazy as BL
 
 import Serializable
 
+type GridDimensions = (Int, Int)
+
+data GameParams = GameParams GridDimensions
+                  deriving ( Show, Eq, Generic )
+
+instance ToJSON GameParams
+
 data World = World
   { grid :: [[ Object ]]
-  } deriving ( Show, Generic )
+  } deriving ( Show, Eq, Generic )
 
 data Object = Live
             | Dead
-            deriving ( Show, Generic, Eq )
+            deriving ( Show, Eq, Generic )
 
 type Position = V2 Double
 type Velocity = V2 Double

@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Game where
 
@@ -56,8 +57,9 @@ instance Serializable World where
 type Second = Double
 
 class Game a where
+  data Params a :: *
   update :: a -> Second -> a
-  newWorld :: RandomGen g => g -> a
+  newWorld :: RandomGen g => Params a -> g -> a
 
 isLive :: Object -> Bool
 isLive Live = True
@@ -105,9 +107,10 @@ updateGrid w@(World rs) =
   World $ map (\(y, r) -> updateRow w y r) (zip [0..] rs)
 
 instance Game World where
+  data Params World = Params GameParams
   update world _ = updateGrid world
-  newWorld seed = World (chunksOf 20 cells)
+  newWorld (Params (GameParams (x, y))) seed = World (chunksOf x cells)
     where
-      cells = map (kill 0.7) (take (20 * 20) rs)
+      cells = map (kill 0.7) (take (x * y) rs)
       rs = randomRs (0,1) seed :: [Float]
       kill p r = if r > p then Live else Dead

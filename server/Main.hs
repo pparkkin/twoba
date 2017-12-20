@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import qualified Network.WebSockets as WS
 import qualified Network.Wai.Handler.WebSockets as WaiWS
 
+import Data.ByteString ( ByteString )
 import Control.Concurrent
 import Control.Monad
 import System.CPUTime
@@ -54,11 +55,11 @@ getTimeInSeconds = do
 -- Fixed 3 FPS
 frameTime = 1.0 / 3.0
 
-newGame :: IO (WS.Connection -> EventPipe -> IO ())
-newGame = do
+newGame :: GameParams -> IO (WS.Connection -> EventPipe -> IO ())
+newGame params = do
   time <- getTimeInSeconds
   seed <- getStdGen
-  return $ gameLoop (newWorld seed :: World) time frameTime
+  return $ gameLoop (newWorld (Params params) seed :: World) time frameTime
 
 runEventPipe :: Producer -> Consumer -> IO ()
 runEventPipe prod cons = do
@@ -82,10 +83,15 @@ application = scottyApp $ do
 wsapp :: WS.ServerApp
 wsapp pending = do
   conn <- WS.acceptRequest pending
-  putStrLn "New connection"
+  putStrLn "New connection."
   WS.forkPingThread conn 30
-  game <- newGame
-  putStrLn "New game"
+  putStrLn "Waiting for client hello."
+  msg <- WS.receiveData conn :: IO ByteString
+  putStrLn "Got client hello. Sending server hello."
+  let params = GameParams (20, 20)
+  WS.sendTextData conn (serialize (ServerHello params))
+  game <- newGame params
+  putStrLn "Starting new game."
   runEventPipe (echoProd conn) (game conn)
 
 echoProd :: WS.Connection -> EventPipe -> IO ()

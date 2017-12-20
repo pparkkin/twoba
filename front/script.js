@@ -10,9 +10,7 @@ var input = [];
 // The current view
 var view = null;
 
-let gridDimensions = {
-  x: 20, y: 20
-};
+var gridDimensions = null;
 
 //Aliases
 let Application = PIXI.Application,
@@ -63,10 +61,15 @@ function render(app) {
   app.stage.addChild(player.sprite);
 }
 
-function processInput() {
+function processInput(app) {
   input.forEach(function(e) {
     // console.log(e);
-    if (e.type == "playermove") {
+    if (e.type == "initializegame") {
+      gridDimensions = {
+        x: e.data[0], y: e.data[1]
+      };
+      initView(app);
+    } else if (e.type == "playermove") {
       player.location.x = e.x;
       player.location.y = e.y;
     } else if (e.type == "serverstate") {
@@ -78,7 +81,7 @@ function processInput() {
 
 function gameLoop(app) {
   window.requestAnimationFrame(gameLoop.bind(null, app));
-  processInput();
+  processInput(app);
   render(app);
 }
 
@@ -116,7 +119,12 @@ function onMouseUp(ev) {
 
 function onMessage(ev) {
   var msg = JSON.parse(ev.data);
-  if (msg["tag"] == "ServerState") {
+  if (msg["tag"] == "ServerHello") {
+    input.push({
+      type: "initializegame",
+      data: msg["contents"]
+    });
+  } else if (msg["tag"] == "ServerState") {
     input.push({
       type: "serverstate",
       data: msg["contents"]
@@ -141,10 +149,9 @@ function setup() {
   let ws = new WebSocket('ws://localhost:3000');
   ws.onmessage = onMessage;
   ws.onopen = function (event) {
-    console.log("Socket open!");
+    ws.send("Gruffalo Crumble!\n");
   };
 
-  initView(app);
   gameLoop(app);
 }
 

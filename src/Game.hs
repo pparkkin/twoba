@@ -46,31 +46,8 @@ cellAt (World os _) (x, y) =
 neighbors :: World -> (Int, Int) -> [Cell]
 neighbors w = map (cellAt w) . neighborCoords
 
-updateCell :: World -> Int -> Int -> Cell
-updateCell w x y =
-  let
-    c = cellAt w (x, y)
-    ns = neighbors w (x, y)
-    ls = filter isLive ns
-  in
-    case c of
-      Live | length ls < 2 -> Dead
-           | length ls > 3 -> Dead
-           | otherwise -> Live
-      Dead | length ls == 3 -> Live
-           | otherwise -> Dead
-
-updateRow :: World -> Int -> [Cell] -> [Cell]
-updateRow w y os =
-  map (\(x, c) -> updateCell w x y) (zip [0..] os)
-
-updateGrid :: World -> [[Cell]] -> [[Cell]]
-updateGrid w rs =
-  map (\(y, r) -> updateRow w y r) (zip [0..] rs)
-
 updateWorld :: World -> World
-updateWorld w@(World rs p) =
-  World (updateGrid w rs) p
+updateWorld = id
 
 moveObject :: Position -> Object -> Object
 moveObject p o = o { pos = p }

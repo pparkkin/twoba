@@ -50,8 +50,14 @@ updateWorld = id
 moveObject :: Position -> Object -> Object
 moveObject p o = o { pos = p }
 
+movePlayer :: World -> Position -> Object -> Object
+movePlayer w p@(V2 x y) o =
+  case cellAt w ((round x), (round y)) of
+    Empty -> moveObject p o
+    Wall -> o
+
 handleInput :: Message -> World -> World
-handleInput (PlayerMove p) w = w { player = moveObject p (player w) }
+handleInput (PlayerMove p) w = w { player = movePlayer w p (player w) }
 handleInput _ w = w
 
 fillGrid :: Cell -> Int -> Int -> Grid

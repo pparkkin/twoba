@@ -8,8 +8,7 @@ import Network.WebSockets ( Connection
                           , receiveData
                           , sendTextData )
 
-type ClientInfo = String
-
+import Types
 
 testClient :: IO ()
 testClient = do

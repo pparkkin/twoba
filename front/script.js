@@ -61,27 +61,43 @@ function render(app) {
   app.stage.addChild(player.sprite);
 }
 
-function processInput(app) {
+function processInputEvent(app, ws, e) {
+  // console.log(e);
+  if (e.type == "initializegame") {
+    gridDimensions = {
+      x: e.data[0], y: e.data[1]
+    };
+    initView(app);
+  } else if (e.type == "playermove") {
+    ws.send(JSON.stringify({
+      tag: "PlayerMove",
+      contents: {
+        x: e.x, y: e.y
+      }
+    }));
+  } else if (e.type == "serverstate") {
+    state = e.data["grid"];
+    var p = e.data["player"];
+    player.location.x = p["pos"]["x"];
+    player.location.y = p["pos"]["y"];
+  }
+}
+
+function processInput(app, ws) {
   input.forEach(function(e) {
-    // console.log(e);
-    if (e.type == "initializegame") {
-      gridDimensions = {
-        x: e.data[0], y: e.data[1]
-      };
-      initView(app);
-    } else if (e.type == "playermove") {
-      player.location.x = e.x;
-      player.location.y = e.y;
-    } else if (e.type == "serverstate") {
-      state = e.data["grid"];
+    try {
+      processInputEvent(app, ws, e);
+    } catch (err) {
+      console.error("Unable to process input event '"+e+"'");
+      console.error(err);
     }
   });
   input = [];
 }
 
-function gameLoop(app) {
-  window.requestAnimationFrame(gameLoop.bind(null, app));
-  processInput(app);
+function gameLoop(app, ws) {
+  window.requestAnimationFrame(gameLoop.bind(null, app, ws));
+  processInput(app, ws);
   render(app);
 }
 
@@ -152,7 +168,7 @@ function setup() {
     ws.send("Gruffalo Crumble!\n");
   };
 
-  gameLoop(app);
+  gameLoop(app, ws);
 }
 
 function load() {

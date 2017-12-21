@@ -9,13 +9,14 @@ import Network.Wai.Middleware.Static ( staticPolicy
                                      , (>->)
                                      )
 import Control.Monad (forever)
+import qualified Data.ByteString.Char8 as C8
 import qualified Data.Text as T
 import qualified Network.WebSockets as WS
 import qualified Network.Wai.Handler.WebSockets as WaiWS
 
-import Data.ByteString ( ByteString )
 import Control.Concurrent
 import Control.Monad
+import Data.ByteString ( ByteString )
 import System.CPUTime
 import System.IO
 import System.Random ( getStdGen )
@@ -24,10 +25,11 @@ import Text.Printf
 import Game
 import Message
 import Serializable
+import Types
 
 -- http://chimera.labs.oreilly.com/books/1230000000929/ch07.html
 data EventPipe = EventPipe (MVar Event)
-data Event = Message T.Text | Stop (MVar ())
+data Event = Message ByteString deriving ( Show )
 
 type Consumer = (EventPipe -> IO ())
 type Producer = (EventPipe -> IO ())
@@ -35,17 +37,25 @@ type Producer = (EventPipe -> IO ())
 display :: WS.Connection -> World -> IO ()
 display conn world = WS.sendTextData conn (serialize (ServerState world))
 
+processInput :: EventPipe -> World -> IO World
+processInput (EventPipe m) w = do
+  mmsg <- tryTakeMVar m
+  case mmsg of
+    Just (Message msg) -> return (input msg w)
+    Nothing -> return w
+
 gameLoop :: World -> Second -> Second -> WS.Connection -> EventPipe -> IO ()
 gameLoop world beginTime dt conn input = do
-  let world' = update world dt
-  display conn world'
+  world' <- processInput input world
+  let world'' = update dt world'
+  display conn world''
 
   endTime <- getTimeInSeconds
   let dt' = endTime - beginTime
   when (dt' < frameTime) $ do
     let sleepTime = floor ((frameTime - dt') * (10 ** 6))
     threadDelay sleepTime
-  gameLoop world' endTime dt conn input
+  gameLoop world'' endTime dt conn input
 
 getTimeInSeconds :: IO Double
 getTimeInSeconds = do
@@ -97,4 +107,4 @@ wsapp pending = do
 echoProd :: WS.Connection -> EventPipe -> IO ()
 echoProd conn (EventPipe m) = forever $ do
   msg <- WS.receiveData conn
-  putMVar m (Message msg)
+  tryPutMVar m (Message msg)

@@ -16,12 +16,14 @@ data GameParams = GameParams GridDimensions
                   deriving ( Show, Eq, Generic )
 
 data World = World
-  { grid :: [[ Cell ]]
+  { grid :: Grid
   , player :: Object
   } deriving ( Show, Eq, Generic )
 
-data Cell = Live
-          | Dead
+type Grid = [[Cell]]
+
+data Cell = Empty
+          | Wall
           deriving ( Show, Eq, Generic )
 
 data Object = Object

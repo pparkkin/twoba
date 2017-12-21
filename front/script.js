@@ -41,7 +41,7 @@ function render(app) {
 
   grid.forEach(function(row, i) {
     row.forEach(function(cell, j) {
-      if (cell == "Live") {
+      if (cell == "Wall") {
         view[i][j].visible = true;
       } else {
         view[i][j].visible = false;

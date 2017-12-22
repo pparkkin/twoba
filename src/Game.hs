@@ -52,7 +52,7 @@ moveObject p o = o { pos = p }
 
 movePlayer :: World -> Position -> Object -> Object
 movePlayer w p@(V2 x y) o =
-  case cellAt w ((round x), (round y)) of
+  case cellAt w (x, y) of
     Empty -> moveObject p o
     Wall -> o
 
@@ -86,7 +86,7 @@ generateGrid seed x y =
           else Wall : pickCells s cs
 
 initPlayer :: Object
-initPlayer = Object (V2 0.0 0.0) (V2 0.0 0.0)
+initPlayer = Object (V2 0 0)
 
 instance Game World where
   data Params World = Params GameParams

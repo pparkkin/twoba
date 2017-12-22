@@ -28,11 +28,9 @@ data Cell = Empty
 
 data Object = Object
   { pos :: Position
-  , vel :: Velocity
   } deriving ( Show, Eq, Generic )
 
-type Position = V2 Double
-type Velocity = V2 Double
+type Position = V2 Int
 
 type Second = Double
 

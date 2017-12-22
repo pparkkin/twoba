@@ -8,9 +8,19 @@ var player = {
 // List of inputs
 var input = [];
 // The current view
-var view = null;
+var view = {
+  grid: null, // [[<sprite>]]
+  gridSize: null, // { w: ?, h: ? }
+  viewSize: null // { w: ?, h: ? }
+};
 
-var gridDimensions = null;
+function cellWidth() {
+  return view.viewSize.x / view.gridSize.x;
+}
+
+function cellHeight() {
+  return view.viewSize.y / view.gridSize.y;
+}
 
 //Aliases
 let Application = PIXI.Application,
@@ -34,17 +44,15 @@ function printGrid(grid) {
 
 function render(app) {
   if (state == null) { return; }
-  let grid = state,
-      cellHeight = window.innerHeight / gridDimensions.y,
-      cellWidth = window.innerWidth / gridDimensions.x;
+  let grid = state;
   // printGrid(grid);
 
   grid.forEach(function(row, i) {
     row.forEach(function(cell, j) {
       if (cell == "Wall") {
-        view[i][j].visible = true;
+        view.grid[i][j].visible = true;
       } else {
-        view[i][j].visible = false;
+        view.grid[i][j].visible = false;
       }
     });
   });
@@ -53,19 +61,24 @@ function render(app) {
     player.sprite = new Sprite(
       resources["sprites/player-sprite.png"].texture
     );
-    player.sprite.width = cellWidth;
-    player.sprite.height = cellHeight;
+    player.sprite.width = cellWidth();
+    player.sprite.height = cellHeight();
   }
-  player.sprite.x = player.location.x * cellWidth;
-  player.sprite.y = player.location.y * cellHeight;
+  player.sprite.x = player.location.x * cellWidth();
+  player.sprite.y = player.location.y * cellHeight();
   app.stage.addChild(player.sprite);
 }
 
 function processInputEvent(app, ws, e) {
   // console.log(e);
   if (e.type == "initializegame") {
-    gridDimensions = {
+    view.gridSize = {
       x: e.data[0], y: e.data[1]
+    };
+    // Make the view size the largest multiple of grid size that fits in the window
+    view.viewSize = {
+      x: window.innerWidth - (window.innerWidth % view.gridSize.x),
+      y: window.innerHeight - (window.innerHeight % view.gridSize.x)
     };
     initView(app);
   } else if (e.type == "playermove") {
@@ -102,34 +115,31 @@ function gameLoop(app, ws) {
 }
 
 function initView(app) {
-  let cellHeight = window.innerHeight / gridDimensions.y,
-      cellWidth = window.innerWidth / gridDimensions.x;
-  view = [];
-  for (var i = 0; i < gridDimensions.y; i++) {
+  app.renderer.resize(view.viewSize.x, view.viewSize.y);
+  view.grid = [];
+  for (var i = 0; i < view.gridSize.y; i++) {
     var row = [];
-    for (var j = 0; j < gridDimensions.x; j++) {
+    for (var j = 0; j < view.gridSize.x; j++) {
       let sprite = new Sprite(
-        resources["sprites/sprite.png"].texture
+        resources["sprites/wall-sprite.png"].texture
       );
-      sprite.width = cellWidth;
-      sprite.height = cellHeight;
-      sprite.x = j * cellWidth;
-      sprite.y = i * cellHeight;
+      sprite.width = cellWidth();
+      sprite.height = cellHeight();
+      sprite.x = j * cellWidth();
+      sprite.y = i * cellHeight();
       sprite.visible = false;
       app.stage.addChild(sprite);
       row.push(sprite);
     }
-    view.push(row);
+    view.grid.push(row);
   }
 }
 
 function onMouseUp(ev) {
-  let cellWidth = window.innerWidth / 20,
-      cellHeight = window.innerHeight / 20;
   input.push({
     type: "playermove",
-    x: Math.floor(ev.clientX/cellWidth),
-    y: Math.floor(ev.clientY/cellHeight)
+    x: Math.floor(ev.clientX/cellWidth()),
+    y: Math.floor(ev.clientY/cellHeight())
   });
 }
 
@@ -173,7 +183,7 @@ function setup() {
 
 function load() {
   loader
-    .add("sprites/sprite.png")
+    .add("sprites/wall-sprite.png")
     .add("sprites/player-sprite.png")
     .load(setup);
 }

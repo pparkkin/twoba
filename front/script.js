@@ -1,15 +1,19 @@
 // State from server
-var state = null;
+var state = {
+  grid: null,
+  dirty: false // only process if dirty
+};
 // Player state
 var player = {
-  sprite: null,
-  location: { x: 0, y: 0 }
+  location: { x: 0, y: 0 },
+  dirty: false
 };
 // List of inputs
 var input = [];
 // The current view
 var view = {
   grid: null, // [[<sprite>]]
+  playerSprite: null,
   gridSize: null, // { w: ?, h: ? }
   viewSize: null // { w: ?, h: ? }
 };
@@ -42,9 +46,9 @@ function printGrid(grid) {
   console.log(lines.join('\n'));
 }
 
-function render(app) {
-  if (state == null) { return; }
-  let grid = state;
+function renderGrid(app) {
+  if (!state.dirty) { return; }
+  let grid = state.grid;
   // printGrid(grid);
 
   grid.forEach(function(row, i) {
@@ -56,17 +60,20 @@ function render(app) {
       }
     });
   });
+  state.dirty = false;
+}
 
-  if (player.sprite == null) {
-    player.sprite = new Sprite(
-      resources["sprites/player-sprite.png"].texture
-    );
-    player.sprite.width = cellWidth();
-    player.sprite.height = cellHeight();
-  }
-  player.sprite.x = player.location.x * cellWidth();
-  player.sprite.y = player.location.y * cellHeight();
-  app.stage.addChild(player.sprite);
+function renderPlayer(app) {
+  if (!player.dirty) { return; }
+  view.playerSprite.x = player.location.x * cellWidth();
+  view.playerSprite.y = player.location.y * cellHeight();
+  app.stage.addChild(view.playerSprite);
+  player.dirty = false;
+}
+
+function render(app) {
+  renderGrid(app);
+  renderPlayer(app);
 }
 
 function processInputEvent(app, ws, e) {
@@ -89,10 +96,12 @@ function processInputEvent(app, ws, e) {
       }
     }));
   } else if (e.type == "serverstate") {
-    state = e.data["grid"];
+    state.grid = e.data["grid"];
+    state.dirty = true;
     var p = e.data["player"];
     player.location.x = p["pos"]["x"];
     player.location.y = p["pos"]["y"];
+    player.dirty = true;
   }
 }
 
@@ -114,8 +123,7 @@ function gameLoop(app, ws) {
   render(app);
 }
 
-function initView(app) {
-  app.renderer.resize(view.viewSize.x, view.viewSize.y);
+function initGrid(app) {
   view.grid = [];
   for (var i = 0; i < view.gridSize.y; i++) {
     var row = [];
@@ -133,6 +141,25 @@ function initView(app) {
     }
     view.grid.push(row);
   }
+}
+
+function initPlayer(app) {
+  if (view.playerSprite == null) {
+    view.playerSprite = new Sprite(
+      resources["sprites/player-sprite.png"].texture
+    );
+    view.playerSprite.width = cellWidth();
+    view.playerSprite.height = cellHeight();
+  }
+  view.playerSprite.x = player.location.x * cellWidth();
+  view.playerSprite.y = player.location.y * cellHeight();
+  app.stage.addChild(view.playerSprite);
+}
+
+function initView(app) {
+  app.renderer.resize(view.viewSize.x, view.viewSize.y);
+  initGrid(app);
+  initPlayer(app);
 }
 
 function onMouseUp(ev) {

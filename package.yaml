@@ -27,6 +27,7 @@ dependencies:
 - random
 - scotty
 - split
+- stm
 - text
 - wai-extra
 - wai-middleware-static

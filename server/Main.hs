@@ -1,26 +1,33 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Web.Scotty
-import qualified Network.Wai.Handler.Warp as Warp
+import Control.Concurrent
+import Control.Concurrent.STM.TVar ( TVar
+                                   , newTVar
+                                   , modifyTVar
+                                   , swapTVar
+                                   )
+import Control.Monad
+import Control.Monad.STM ( STM
+                         , atomically
+                         )
+import Data.ByteString ( ByteString )
 import Network.Wai.Middleware.RequestLogger
 import Network.Wai.Middleware.Static ( staticPolicy
                                      , noDots
                                      , addBase
                                      , (>->)
                                      )
-import Control.Monad (forever)
-import qualified Data.ByteString.Char8 as C8
-import qualified Data.Text as T
-import qualified Network.WebSockets as WS
-import qualified Network.Wai.Handler.WebSockets as WaiWS
-
-import Control.Concurrent
-import Control.Monad
-import Data.ByteString ( ByteString )
 import System.CPUTime
 import System.IO
 import System.Random ( getStdGen )
 import Text.Printf
+import Web.Scotty
+
+import qualified Data.ByteString.Char8 as C8
+import qualified Data.Text as T
+import qualified Network.WebSockets as WS
+import qualified Network.Wai.Handler.Warp as Warp
+import qualified Network.Wai.Handler.WebSockets as WaiWS
 
 import Game
 import Message
@@ -28,8 +35,19 @@ import Serializable
 import Types
 
 -- http://chimera.labs.oreilly.com/books/1230000000929/ch07.html
-data EventPipe = EventPipe (MVar Event)
-data Event = Message ByteString deriving ( Show )
+data EventPipe = EventPipe (TVar [Event])
+type Event = ByteString
+
+newEventPipe :: IO EventPipe
+newEventPipe = atomically $ do
+  m <- newTVar []
+  return $ EventPipe m
+
+pushEvent :: EventPipe -> Event -> IO ()
+pushEvent (EventPipe v) e = atomically $ modifyTVar v (\l -> e : l)
+
+takeEvents :: EventPipe -> IO [Event]
+takeEvents (EventPipe v) = atomically $ swapTVar v []
 
 type Consumer = (EventPipe -> IO ())
 type Producer = (EventPipe -> IO ())
@@ -38,11 +56,9 @@ display :: WS.Connection -> World -> IO ()
 display conn world = WS.sendTextData conn (serialize (ServerState world))
 
 processInput :: EventPipe -> World -> IO World
-processInput (EventPipe m) w = do
-  mmsg <- tryTakeMVar m
-  case mmsg of
-    Just (Message msg) -> return (input msg w)
-    Nothing -> return w
+processInput p w = do
+  msgs <- takeEvents p
+  return $ foldr input w msgs
 
 gameLoop :: World -> Second -> Second -> WS.Connection -> EventPipe -> IO ()
 gameLoop world beginTime dt conn input = do
@@ -73,8 +89,7 @@ newGame params = do
 
 runEventPipe :: Producer -> Consumer -> IO ()
 runEventPipe prod cons = do
-  m <- newEmptyMVar
-  let p = EventPipe m
+  p <- newEventPipe
   forkIO (cons p)
   prod p
 
@@ -105,6 +120,6 @@ wsapp pending = do
   runEventPipe (echoProd conn) (game conn)
 
 echoProd :: WS.Connection -> EventPipe -> IO ()
-echoProd conn (EventPipe m) = forever $ do
+echoProd conn p = forever $ do
   msg <- WS.receiveData conn
-  tryPutMVar m (Message msg)
+  pushEvent p msg

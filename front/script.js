@@ -204,6 +204,9 @@ function setup() {
   ws.onopen = function (event) {
     ws.send("Gruffalo Crumble!\n");
   };
+  ws.onclose = function (event) {
+    alert("Connection to server closed!");
+  };
 
   gameLoop(app, ws);
 }

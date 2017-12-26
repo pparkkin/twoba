@@ -6,6 +6,7 @@ var state = {
 // Player state
 var player = {
   location: null,
+  destination: null,
   dirty: false
 };
 // Enemy state
@@ -19,6 +20,7 @@ var input = [];
 var view = {
   grid: null, // [[<sprite>]]
   playerSprite: null,
+  targetSprite: null,
   enemySprite: null,
   gridSize: null, // { w: ?, h: ? }
   viewSize: null // { w: ?, h: ? }
@@ -73,6 +75,14 @@ function renderPlayer(app) {
   if (!player.dirty) { return; }
   view.playerSprite.x = player.location.x * cellWidth();
   view.playerSprite.y = player.location.y * cellHeight();
+  if (player.destination != null) {
+    view.targetSprite.x = player.destination.x * cellWidth();
+    view.targetSprite.y = player.destination.y * cellHeight();
+    view.targetSprite.visible = true;
+    app.stage.addChild(view.targetSprite);
+  } else {
+    view.targetSprite.visible = false;
+  }
   app.stage.addChild(view.playerSprite);
   player.dirty = false;
 }
@@ -109,6 +119,14 @@ function processInputEvent(app, ws, e) {
       x: p["pos"]["x"],
       y: p["pos"]["y"]
     };
+    if (p["pos"] != p["dst"]) {
+      player.destination = {
+        x: p["dst"]["x"],
+        y: p["dst"]["y"],
+      };
+    } else {
+      player.destination = null;
+    }
     player.dirty = true;
     var n = e.data["enemy"];
     enemy.location = {
@@ -164,6 +182,15 @@ function initPlayer(app) {
     );
     view.playerSprite.width = cellWidth();
     view.playerSprite.height = cellHeight();
+  }
+  if (view.targetSprite == null) {
+    view.targetSprite = new Sprite(
+      resources["sprites/target-sprite.png"].texture
+    );
+    view.targetSprite.width = cellWidth();
+    view.targetSprite.height = cellHeight();
+    view.targetSprite.visible = false;
+    app.stage.addChild(view.targetSprite);
   }
   player.location = { x: 0, y: 0 };
   view.playerSprite.x = player.location.x * cellWidth();
@@ -245,6 +272,7 @@ function load() {
   loader
     .add("sprites/wall-sprite.png")
     .add("sprites/player-sprite.png")
+    .add("sprites/target-sprite.png")
     .add("sprites/enemy-sprite.png")
     .load(setup);
 }

@@ -10,6 +10,9 @@ import System.Random ( RandomGen )
 
 import qualified Data.ByteString as BS
 
+type Coord = (Int, Int)
+type Path = [Coord]
+
 type GridDimensions = (Int, Int)
 
 data GameParams = GameParams GridDimensions
@@ -29,6 +32,7 @@ data Cell = Empty
 
 data Object = Object
   { pos :: Position
+  , dst :: Position
   } deriving ( Show, Eq, Generic )
 
 type Position = V2 Int

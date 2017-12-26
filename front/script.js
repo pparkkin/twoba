@@ -5,7 +5,12 @@ var state = {
 };
 // Player state
 var player = {
-  location: { x: 0, y: 0 },
+  location: null,
+  dirty: false
+};
+// Enemy state
+var enemy = {
+  location: null,
   dirty: false
 };
 // List of inputs
@@ -14,6 +19,7 @@ var input = [];
 var view = {
   grid: null, // [[<sprite>]]
   playerSprite: null,
+  enemySprite: null,
   gridSize: null, // { w: ?, h: ? }
   viewSize: null // { w: ?, h: ? }
 };
@@ -99,9 +105,17 @@ function processInputEvent(app, ws, e) {
     state.grid = e.data["grid"];
     state.dirty = true;
     var p = e.data["player"];
-    player.location.x = p["pos"]["x"];
-    player.location.y = p["pos"]["y"];
+    player.location = {
+      x: p["pos"]["x"],
+      y: p["pos"]["y"]
+    };
     player.dirty = true;
+    var n = e.data["enemy"];
+    enemy.location = {
+      x: n["pos"]["x"],
+      y: n["pos"]["y"]
+    };
+    enemy.dirty = true;
   }
 }
 
@@ -151,15 +165,31 @@ function initPlayer(app) {
     view.playerSprite.width = cellWidth();
     view.playerSprite.height = cellHeight();
   }
+  player.location = { x: 0, y: 0 };
   view.playerSprite.x = player.location.x * cellWidth();
   view.playerSprite.y = player.location.y * cellHeight();
   app.stage.addChild(view.playerSprite);
+}
+
+function initEnemy(app) {
+  if (view.enemySprite == null) {
+    view.enemySprite = new Sprite(
+      resources["sprites/enemy-sprite.png"].texture
+    );
+    view.enemySprite.width = cellWidth();
+    view.enemySprite.height = cellHeight();
+  }
+  enemy.location = { x: view.gridSize.x - 1, y: view.gridSize.y - 1 };
+  view.enemySprite.x = enemy.location.x * cellWidth();
+  view.enemySprite.y = enemy.location.y * cellHeight();
+  app.stage.addChild(view.enemySprite);
 }
 
 function initView(app) {
   app.renderer.resize(view.viewSize.x, view.viewSize.y);
   initGrid(app);
   initPlayer(app);
+  initEnemy(app);
 }
 
 function onMouseUp(ev) {
@@ -215,6 +245,7 @@ function load() {
   loader
     .add("sprites/wall-sprite.png")
     .add("sprites/player-sprite.png")
+    .add("sprites/enemy-sprite.png")
     .load(setup);
 }
 

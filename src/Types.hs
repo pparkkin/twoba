@@ -18,6 +18,7 @@ data GameParams = GameParams GridDimensions
 data World = World
   { grid :: Grid
   , player :: Object
+  , enemy :: Object
   } deriving ( Show, Eq, Generic )
 
 type Grid = [[Cell]]

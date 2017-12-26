@@ -36,7 +36,7 @@ neighborCoords (x, y) =
   map (\(x', y') -> (x + x', y + y')) eightDirs
 
 cellAt :: World -> (Int, Int) -> Cell
-cellAt (World os _) (x, y) =
+cellAt (World os _ _) (x, y) =
   if (x < 0 || y < 0) || (x > 19 || y > 19)
     then Wall
     else (os !! y) !! x
@@ -88,6 +88,9 @@ generateGrid seed x y =
 initPlayer :: Object
 initPlayer = Object (V2 0 0)
 
+initEnemy :: Int -> Int -> Object
+initEnemy x y = Object (V2 (x-1) (y-1))
+
 instance Game World where
   data Params World = Params GameParams
   input bs world =
@@ -95,4 +98,7 @@ instance Game World where
       Just m -> handleInput m world
       Nothing -> world
   update _ world = updateWorld world
-  newWorld (Params (GameParams (x, y))) seed = World (generateGrid seed x y) initPlayer
+  newWorld (Params (GameParams (x, y))) seed =
+    World (generateGrid seed x y)
+          initPlayer
+          (initEnemy x y)

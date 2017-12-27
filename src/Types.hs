@@ -37,6 +37,7 @@ data Object = Object
 data ActiveObject = ActiveObject
   { pos :: Position
   , dst :: Position
+  , speed :: Int
   , cooldown :: Int
   } deriving ( Show, Eq, Generic )
 

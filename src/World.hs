@@ -44,7 +44,7 @@ generateGrid seed x y =
           else Wall : pickCells s cs
 
 initPlayer :: ActiveObject
-initPlayer = ActiveObject topLeft topLeft 0
+initPlayer = ActiveObject topLeft topLeft 5 0
   where topLeft = V2 0 0
 
 initEnemy :: Int -> Int -> Object
@@ -89,12 +89,3 @@ neighbors ns (x, y) =
 
 allNeighbors :: Coord -> [Coord]
 allNeighbors = neighbors eightDirs
-
-moveObject :: Position -> ActiveObject -> ActiveObject
-moveObject p o = o { dst = p }
-
-movePlayer :: World -> Position -> ActiveObject -> ActiveObject
-movePlayer w p@(V2 x y) o =
-  case cellAt w (x, y) of
-    Empty -> moveObject p o
-    Wall -> o

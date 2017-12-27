@@ -23,15 +23,16 @@ import Serializable
 import Types
 import World
 
+decrementCooldown :: ActiveObject -> ActiveObject
+decrementCooldown o@(ActiveObject _ _ _ c)
+  | c <= 0 = o { cooldown = 0 }
+  | otherwise = o { cooldown = c - 1 }
+
 updatePlayer :: World -> ActiveObject -> ActiveObject
-updatePlayer w p@(ActiveObject l d c) =
-  if l == d
-    then p
-    else p { pos = V2 x'' y'' }
-      where
-        (V2 x y) = l
-        (V2 x' y') = d
-        (x'', y'') = head $ findPath w (x, y) (x', y')
+updatePlayer w p@(ActiveObject l d _ c)
+  | l == d = decrementCooldown p
+  | c > 0 = decrementCooldown p
+  | otherwise = p { pos = d, cooldown = 12 }
 
 updateEnemy :: World -> Object -> Object
 updateEnemy _ e = e
@@ -41,6 +42,21 @@ updateWorld w@(World _ p e) =
   w { player = updatePlayer w p
     , enemy = updateEnemy w e
     }
+
+moveObject :: World -> Position -> ActiveObject -> ActiveObject
+moveObject w p@(V2 x' y') o =
+  if length path > speed o
+    then o
+    else o { dst = p }
+  where
+    path = findPath w (x, y) (x', y')
+    (V2 x y) = pos (o :: ActiveObject)
+
+movePlayer :: World -> Position -> ActiveObject -> ActiveObject
+movePlayer w p@(V2 x y) o =
+  case cellAt w (x, y) of
+    Empty -> moveObject w p o
+    Wall -> o
 
 handleInput :: Message -> World -> World
 handleInput (PlayerMove p) w = w { player = movePlayer w p (player w) }

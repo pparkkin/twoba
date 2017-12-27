@@ -7,6 +7,7 @@ var state = {
 var player = {
   location: null,
   destination: null,
+  cooldown: 0,
   dirty: false
 };
 // Enemy state
@@ -20,6 +21,7 @@ var input = [];
 var view = {
   grid: null, // [[<sprite>]]
   playerSprite: null,
+  playerProgressBar: null,
   targetSprite: null,
   enemySprite: null,
   gridSize: null, // { w: ?, h: ? }
@@ -38,7 +40,8 @@ function cellHeight() {
 let Application = PIXI.Application,
     loader = PIXI.loader,
     resources = PIXI.loader.resources,
-    Sprite = PIXI.Sprite;
+    Sprite = PIXI.Sprite,
+    Graphics = PIXI.Graphics;
 
 
 function printGrid(grid) {
@@ -71,6 +74,32 @@ function renderGrid(app) {
   state.dirty = false;
 }
 
+function renderProgressBar(app, gridX, gridY, progress) {
+  if (view.playerProgressBar != null) {
+    app.stage.removeChild(view.playerProgressBar);
+    view.playerProgressBar = null;
+  }
+  if (player.cooldown <= 0) {
+    return;
+  }
+  let topPad = 3,
+      leftPad = 3,
+      rightPad = leftPad,
+      barHeight = 7,
+      fullBarWidth = cellWidth() - (leftPad + rightPad),
+      barWidth = fullBarWidth * progress,
+      barX = (cellWidth() * gridX) + leftPad,
+      barY = (cellHeight() * gridY) + topPad;
+  view.playerProgressBar = new Graphics();
+  view.playerProgressBar.beginFill(0x66CCFF);
+  view.playerProgressBar.lineStyle(1, 0x000000, 1);
+  view.playerProgressBar.drawRect(0, 0, barWidth, barHeight);
+  view.playerProgressBar.endFill();
+  view.playerProgressBar.x = barX;
+  view.playerProgressBar.y = barY;
+  app.stage.addChild(view.playerProgressBar);
+}
+
 function renderPlayer(app) {
   if (!player.dirty) { return; }
   view.playerSprite.x = player.location.x * cellWidth();
@@ -84,6 +113,7 @@ function renderPlayer(app) {
     view.targetSprite.visible = false;
   }
   app.stage.addChild(view.playerSprite);
+  renderProgressBar(app, player.location.x, player.location.y, player.cooldown / 12);
   player.dirty = false;
 }
 
@@ -127,6 +157,7 @@ function processInputEvent(app, ws, e) {
     } else {
       player.destination = null;
     }
+    player.cooldown = p["cooldown"];
     player.dirty = true;
     var n = e.data["enemy"];
     enemy.location = {

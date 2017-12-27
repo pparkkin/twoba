@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 module Types where
 
@@ -20,7 +21,7 @@ data GameParams = GameParams GridDimensions
 
 data World = World
   { grid :: Grid
-  , player :: Object
+  , player :: ActiveObject
   , enemy :: Object
   } deriving ( Show, Eq, Generic )
 
@@ -32,7 +33,11 @@ data Cell = Empty
 
 data Object = Object
   { pos :: Position
+  } deriving ( Show, Eq, Generic )
+data ActiveObject = ActiveObject
+  { pos :: Position
   , dst :: Position
+  , cooldown :: Int
   } deriving ( Show, Eq, Generic )
 
 type Position = V2 Int

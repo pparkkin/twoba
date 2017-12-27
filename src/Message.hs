@@ -30,6 +30,8 @@ instance ToJSON Cell
 instance FromJSON Cell
 instance ToJSON Object
 instance FromJSON Object
+instance ToJSON ActiveObject
+instance FromJSON ActiveObject
 instance ToJSON World
 instance FromJSON World
 

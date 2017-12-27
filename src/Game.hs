@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 module Game where
 
@@ -22,13 +23,13 @@ import Serializable
 import Types
 import World
 
-updatePlayer :: World -> Object -> Object
-updatePlayer w p@(Object c d) =
-  if c == d
+updatePlayer :: World -> ActiveObject -> ActiveObject
+updatePlayer w p@(ActiveObject l d c) =
+  if l == d
     then p
     else p { pos = V2 x'' y'' }
       where
-        (V2 x y) = c
+        (V2 x y) = l
         (V2 x' y') = d
         (x'', y'') = head $ findPath w (x, y) (x', y')
 
@@ -40,15 +41,6 @@ updateWorld w@(World _ p e) =
   w { player = updatePlayer w p
     , enemy = updateEnemy w e
     }
-
-moveObject :: Position -> Object -> Object
-moveObject p o = o { dst = p }
-
-movePlayer :: World -> Position -> Object -> Object
-movePlayer w p@(V2 x y) o =
-  case cellAt w (x, y) of
-    Empty -> moveObject p o
-    Wall -> o
 
 handleInput :: Message -> World -> World
 handleInput (PlayerMove p) w = w { player = movePlayer w p (player w) }

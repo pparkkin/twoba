@@ -11,6 +11,7 @@ import Control.Monad.STM ( STM
                          , atomically
                          )
 import Data.ByteString ( ByteString )
+import Network.Wai ( Application )
 import Network.Wai.Middleware.RequestLogger
 import Network.Wai.Middleware.Static ( staticPolicy
                                      , noDots
@@ -96,11 +97,12 @@ runEventPipe prod cons = do
 main :: IO ()
 main = do
   putStrLn "Hello, World!"
-  app <- application
+  app <- front
   Warp.runSettings (Warp.setPort 3000 Warp.defaultSettings)
     $ WaiWS.websocketsOr WS.defaultConnectionOptions wsapp app
 
-application = scottyApp $ do
+front :: IO Application
+front = scottyApp $ do
   middleware logStdoutDev
   middleware $ staticPolicy (noDots >-> addBase "front")
   get "/" $ file "front/index.html"
@@ -117,9 +119,9 @@ wsapp pending = do
   WS.sendTextData conn (serialize (ServerHello params))
   game <- newGame params
   putStrLn "Starting new game."
-  runEventPipe (echoProd conn) (game conn)
+  runEventPipe (eventListener conn) (game conn)
 
-echoProd :: WS.Connection -> EventPipe -> IO ()
-echoProd conn p = forever $ do
+eventListener :: WS.Connection -> EventPipe -> IO ()
+eventListener conn p = forever $ do
   msg <- WS.receiveData conn
   pushEvent p msg

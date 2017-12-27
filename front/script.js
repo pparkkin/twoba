@@ -275,6 +275,18 @@ function onMessage(ev) {
   }
 }
 
+// https://stackoverflow.com/a/1349426/7339694
+function random_name() {
+  var text = "";
+  var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+  for (var i = 0; i < 5; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+
+  return text;
+}
+
 function setup() {
   let app = new Application({
     backgroundColor: 0xffffff
@@ -290,7 +302,7 @@ function setup() {
   let ws = new WebSocket('ws://localhost:3000');
   ws.onmessage = onMessage;
   ws.onopen = function (event) {
-    ws.send("Gruffalo Crumble!\n");
+    ws.send(random_name() + "\n");
   };
   ws.onclose = function (event) {
     alert("Connection to server closed!");

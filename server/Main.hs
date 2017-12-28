@@ -11,9 +11,6 @@ import Control.Concurrent.STM.TVar ( TVar
                                    , writeTVar
                                    )
 import Control.Monad
-import Control.Monad.STM ( STM
-                         , atomically
-                         )
 import Data.ByteString ( ByteString )
 import Data.Text.Encoding ( decodeUtf8 )
 import Network.Wai ( Application )
@@ -36,6 +33,8 @@ import qualified Network.WebSockets as WS
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.Wai.Handler.WebSockets as WaiWS
 
+import EventPipe
+import ConnectionMap
 import Game
 import Message
 import Serializable
@@ -43,65 +42,27 @@ import Types
 
 data GameContext = GameContext
   { params :: GameParams
-  , players :: PlayerMap
-  , eventpipe :: EventPipe
+  , players :: ConnectionMap PlayerName
+  , eventpipe :: EventPipe Event
   , world :: World
   }
 
-data PlayerMap = PlayerMap (TVar (M.Map T.Text WS.Connection))
-
-newPlayerMap :: IO PlayerMap
-newPlayerMap = atomically $ do
-  m <- newTVar M.empty
-  return $ PlayerMap m
-
-addPlayerConnection :: PlayerMap -> T.Text -> WS.Connection -> IO ()
-addPlayerConnection (PlayerMap ps) n c = atomically $ do
-  m <- readTVar ps
-  when (M.size m < 2) $
-    writeTVar ps (M.insert n c m)
-
-mapPlayerConnections_ :: (T.Text -> WS.Connection -> IO ()) -> PlayerMap -> IO ()
-mapPlayerConnections_ a (PlayerMap ps) = do
-  m <- atomically $ readTVar ps
-  sequence_ $ M.elems $ M.mapWithKey a m
-
-playerCount :: PlayerMap -> IO Int
-playerCount (PlayerMap ps) = atomically $ do
-  m <- readTVar ps
-  return (M.size m)
-
-data EventPipe = EventPipe (TVar [Event])
 type Event = (PlayerName, ByteString)
-
-newEventPipe :: IO EventPipe
-newEventPipe = atomically $ do
-  m <- newTVar []
-  return $ EventPipe m
-
-pushEvent :: EventPipe -> Event -> IO ()
-pushEvent (EventPipe v) e = atomically $ modifyTVar v (\l -> e : l)
-
-takeEvents :: EventPipe -> IO [Event]
-takeEvents (EventPipe v) = atomically $ swapTVar v []
-
-type Consumer = (EventPipe -> IO ())
-type Producer = (EventPipe -> IO ())
 
 displayForPlayer :: World -> T.Text -> WS.Connection -> IO ()
 displayForPlayer world name conn =
   WS.sendTextData conn (serialize (ServerState world))
 
-display :: PlayerMap -> World -> IO ()
+display :: ConnectionMap PlayerName -> World -> IO ()
 display ps world =
-  mapPlayerConnections_ (displayForPlayer world) ps
+  mapConnections_ (displayForPlayer world) ps
 
-processInput :: EventPipe -> World -> IO World
+processInput :: EventPipe Event -> World -> IO World
 processInput p w = do
   msgs <- takeEvents p
   return $ foldr (\(n, msg) w' -> input n msg w') w msgs
 
-gameLoop :: World -> Second -> Second -> PlayerMap -> EventPipe -> IO ()
+gameLoop :: World -> Second -> Second -> ConnectionMap PlayerName -> EventPipe Event -> IO ()
 gameLoop world beginTime dt conns input = do
   world' <- processInput input world
   let world'' = update dt world'
@@ -125,7 +86,7 @@ frameTime = 1.0 / 3.0
 newGame :: GameParams -> IO GameContext
 newGame params = do
   e <- newEventPipe
-  m <- newPlayerMap
+  m <- newConnectionMap
   seed <- getStdGen
   let w = newWorld (Params params) seed
   return (GameContext params m e w)
@@ -155,7 +116,7 @@ wsapp :: GameContext -> WS.ServerApp
 wsapp g@(GameContext params ps e w) pending = do
   putStrLn "New pending request."
   -- FIXME: Checking count and adding connection should be atomic
-  count <- playerCount ps
+  count <- connectionCount ps
   when (count < 2) $ do
     conn <- WS.acceptRequest pending
     putStrLn "New connection."
@@ -165,11 +126,11 @@ wsapp g@(GameContext params ps e w) pending = do
     -- FIXME: Needs checking for name collisions
     putStrLn $ "Got client hello (" ++ show msg ++ "). Sending server hello."
     WS.sendTextData conn (serialize (ServerHello params))
-    addPlayerConnection ps (decodeUtf8 msg) conn
+    addConnection ps (decodeUtf8 msg) conn
     pushEvent e (decodeUtf8 msg, serialize AddPlayer)
     eventListener (decodeUtf8 msg) conn e
 
-eventListener :: PlayerName -> WS.Connection -> EventPipe -> IO ()
+eventListener :: PlayerName -> WS.Connection -> EventPipe Event -> IO ()
 eventListener n conn p = forever $ do
   msg <- WS.receiveData conn
   pushEvent p (n, msg)

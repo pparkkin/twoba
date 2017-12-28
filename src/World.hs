@@ -11,14 +11,13 @@ import System.Random ( RandomGen
                      )
 
 import qualified Data.Set as S
+import qualified Data.Text as T
 
 import Types
 
 newWorld :: RandomGen g => g -> Int -> Int -> World
 newWorld seed x y =
-  World (generateGrid seed x y)
-        ("", initPlayer)
-        (initEnemy x y)
+  World (generateGrid seed x y) []
 
 fillGrid :: Cell -> Int -> Int -> Grid
 fillGrid c x y = chunksOf x . replicate (x * y) $ c
@@ -45,16 +44,18 @@ generateGrid seed x y =
           then Empty : pickCells (S.delete (swap c) s) cs
           else Wall : pickCells s cs
 
-initPlayer :: ActiveObject
-initPlayer = ActiveObject topLeft topLeft 5 0
-  where topLeft = V2 0 0
+data PlayerSlot = FirstPlayer | SecondPlayer
+                deriving ( Eq, Ord, Show )
 
-initEnemy :: Int -> Int -> Object
-initEnemy x y = Object bottomRight
-  where bottomRight = V2 (x-1) (y-1)
+initPlayer :: PlayerSlot -> PlayerName -> (PlayerName, ActiveObject)
+initPlayer FirstPlayer n = (n, ActiveObject topLeft topLeft 5 0)
+  where topLeft = V2 0 0
+initPlayer SecondPlayer n = (n, ActiveObject bottomRight bottomRight 5 0)
+  -- FIXME: Don't use hard coded grid size
+  where bottomRight = V2 19 19
 
 cellAt :: World -> Coord -> Cell
-cellAt (World os _ _) (x, y) =
+cellAt (World os _) (x, y) =
   if (x < 0 || y < 0) || (x > 19 || y > 19)
     then Wall
     else (os !! y) !! x

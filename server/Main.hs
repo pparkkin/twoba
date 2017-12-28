@@ -72,7 +72,7 @@ playerCount (PlayerMap ps) = atomically $ do
   return (M.size m)
 
 data EventPipe = EventPipe (TVar [Event])
-type Event = ByteString
+type Event = (PlayerName, ByteString)
 
 newEventPipe :: IO EventPipe
 newEventPipe = atomically $ do
@@ -99,7 +99,7 @@ display ps world =
 processInput :: EventPipe -> World -> IO World
 processInput p w = do
   msgs <- takeEvents p
-  return $ foldr input w msgs
+  return $ foldr (\(n, msg) w' -> input n msg w') w msgs
 
 gameLoop :: World -> Second -> Second -> PlayerMap -> EventPipe -> IO ()
 gameLoop world beginTime dt conns input = do
@@ -166,9 +166,10 @@ wsapp g@(GameContext params ps e w) pending = do
     putStrLn $ "Got client hello (" ++ show msg ++ "). Sending server hello."
     WS.sendTextData conn (serialize (ServerHello params))
     addPlayerConnection ps (decodeUtf8 msg) conn
-    eventListener conn e
+    pushEvent e (decodeUtf8 msg, serialize AddPlayer)
+    eventListener (decodeUtf8 msg) conn e
 
-eventListener :: WS.Connection -> EventPipe -> IO ()
-eventListener conn p = forever $ do
+eventListener :: PlayerName -> WS.Connection -> EventPipe -> IO ()
+eventListener n conn p = forever $ do
   msg <- WS.receiveData conn
-  pushEvent p msg
+  pushEvent p (n, msg)

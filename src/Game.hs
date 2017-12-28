@@ -37,35 +37,47 @@ updatePlayer w (n, o@(ActiveObject l d _ c))
   | c > 0 = (n, decrementCooldown o)
   | otherwise = (n, resetCooldown . moveObject d $ o)
 
-updateEnemy :: World -> Object -> Object
-updateEnemy _ e = e
+updatePlayers :: World -> [(PlayerName, ActiveObject)] -> [(PlayerName, ActiveObject)]
+updatePlayers w = map (updatePlayer w)
 
 updateWorld :: World -> World
-updateWorld w@(World _ p e) =
-  w { player = updatePlayer w p
-    , enemy = updateEnemy w e
+updateWorld w@(World _ p) =
+  w { players = updatePlayers w p
     }
 
 setObjectDest :: Position -> ActiveObject -> ActiveObject
 setObjectDest p o = o { dst = p }
 
-setPlayerDest :: World -> Position -> (PlayerName, ActiveObject) -> (PlayerName, ActiveObject)
-setPlayerDest w p@(V2 x y) (n, o) =
-  if canMoveTo w (x, y) && pathLength w cur p <= speed o
-    then (n, setObjectDest p o)
-    else (n, o)
+setPlayerDest :: PlayerName -> Position -> World -> World
+setPlayerDest n p@(V2 x y) w@(World _ ps) = w { players = aux ps }
   where
-    cur = pos (o :: ActiveObject)
+    aux [] = []
+    aux ((n',o):rs)
+      | n' == n = (n', setDest o) : rs
+      | otherwise = (n', o) : aux rs
+    setDest o =
+      if canMoveTo w (x, y) && pathLength w cur p <= speed o
+        then setObjectDest p o
+        else o
+      where
+        cur = pos (o :: ActiveObject)
 
-handleInput :: Message -> World -> World
-handleInput (PlayerMove p) w = w { player = setPlayerDest w p (player w) }
-handleInput _ w = w
+addPlayer :: PlayerName -> World -> World
+addPlayer n w@(World _ ps)
+  | length ps == 0 = w { players = initPlayer FirstPlayer n : ps }
+  | length ps == 1 = w { players = initPlayer SecondPlayer n : ps }
+  | otherwise = w
+
+handleInput :: PlayerName -> Message -> World -> World
+handleInput n (PlayerMove p) w = setPlayerDest n p w
+handleInput n AddPlayer w = addPlayer n w
+handleInput _ _ w = w
 
 instance Game World where
   data Params World = Params GameParams
-  input bs world =
+  input n bs world =
     case deserialize bs of
-      Just m -> handleInput m world
+      Just m -> handleInput n m world
       Nothing -> world
   update _ = updateWorld
   newWorld (Params (GameParams (x, y))) seed = World.newWorld seed x y

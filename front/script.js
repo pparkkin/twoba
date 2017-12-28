@@ -5,6 +5,7 @@ var state = {
 };
 // Player state
 var player = {
+  name: null,
   location: null,
   destination: null,
   cooldown: 0,
@@ -112,14 +113,43 @@ function renderPlayer(app) {
   } else {
     view.targetSprite.visible = false;
   }
+  view.playerSprite.visible = true;
   app.stage.addChild(view.playerSprite);
   renderProgressBar(app, player.location.x, player.location.y, player.cooldown / 12);
   player.dirty = false;
 }
 
+function renderEnemy(app) {
+  if (!enemy.dirty) { return; }
+  view.enemySprite.x = enemy.location.x * cellWidth();
+  view.enemySprite.y = enemy.location.y * cellHeight();
+  view.enemySprite.visible = true;
+  app.stage.addChild(view.enemySprite);
+  enemy.dirty = false;
+}
+
 function render(app) {
   renderGrid(app);
+  renderEnemy(app);
   renderPlayer(app);
+}
+
+function findPlayerData(ps, n) {
+  let needles = ps.filter(p => p[0] == n);
+  if (needles.length == 1) {
+    return needles[0][1];
+  } else {
+    return null;
+  }
+}
+
+function findEnemyData(ps, n) {
+  let needles = ps.filter(p => p[0] != n);
+  if (needles.length == 1) {
+    return needles[0][1];
+  } else {
+    return null;
+  }
 }
 
 function processInputEvent(app, ws, e) {
@@ -144,27 +174,31 @@ function processInputEvent(app, ws, e) {
   } else if (e.type == "serverstate") {
     state.grid = e.data["grid"];
     state.dirty = true;
-    var p = e.data["player"][1];
-    player.location = {
-      x: p["pos"]["x"],
-      y: p["pos"]["y"]
-    };
-    if (p["pos"] != p["dst"]) {
-      player.destination = {
-        x: p["dst"]["x"],
-        y: p["dst"]["y"],
+    let p = findPlayerData(e.data["players"], player.name);
+    if (p != null) {
+      player.location = {
+        x: p["pos"]["x"],
+        y: p["pos"]["y"]
       };
-    } else {
-      player.destination = null;
+      if (p["pos"] != p["dst"]) {
+        player.destination = {
+          x: p["dst"]["x"],
+          y: p["dst"]["y"],
+        };
+      } else {
+        player.destination = null;
+      }
+      player.cooldown = p["cooldown"];
+      player.dirty = true;
     }
-    player.cooldown = p["cooldown"];
-    player.dirty = true;
-    var n = e.data["enemy"];
-    enemy.location = {
-      x: n["pos"]["x"],
-      y: n["pos"]["y"]
-    };
-    enemy.dirty = true;
+    let n = findEnemyData(e.data["players"], player.name);
+    if (n != null) {
+      enemy.location = {
+        x: n["pos"]["x"],
+        y: n["pos"]["y"]
+      };
+      enemy.dirty = true;
+    }
   }
 }
 
@@ -226,6 +260,7 @@ function initPlayer(app) {
   player.location = { x: 0, y: 0 };
   view.playerSprite.x = player.location.x * cellWidth();
   view.playerSprite.y = player.location.y * cellHeight();
+  view.playerSprite.visible = false;
   app.stage.addChild(view.playerSprite);
 }
 
@@ -240,6 +275,7 @@ function initEnemy(app) {
   enemy.location = { x: view.gridSize.x - 1, y: view.gridSize.y - 1 };
   view.enemySprite.x = enemy.location.x * cellWidth();
   view.enemySprite.y = enemy.location.y * cellHeight();
+  view.enemySprite.visible = false;
   app.stage.addChild(view.enemySprite);
 }
 
@@ -301,8 +337,9 @@ function setup() {
 
   let ws = new WebSocket('ws://localhost:3000');
   ws.onmessage = onMessage;
+  player.name = random_name();
   ws.onopen = function (event) {
-    ws.send(random_name() + "\n");
+    ws.send(player.name);
   };
   ws.onclose = function (event) {
     alert("Connection to server closed!");

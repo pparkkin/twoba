@@ -10,6 +10,7 @@ import Linear.V2 ( V2(V2) )
 import System.Random ( RandomGen )
 
 import qualified Data.ByteString as BS
+import qualified Data.Text as T
 
 type Coord = (Int, Int)
 type Path = [Coord]
@@ -21,7 +22,7 @@ data GameParams = GameParams GridDimensions
 
 data World = World
   { grid :: Grid
-  , player :: ActiveObject
+  , player :: (PlayerName, ActiveObject)
   , enemy :: Object
   } deriving ( Show, Eq, Generic )
 
@@ -30,6 +31,8 @@ type Grid = [[Cell]]
 data Cell = Empty
           | Wall
           deriving ( Show, Eq, Generic )
+
+type PlayerName = T.Text
 
 data Object = Object
   { pos :: Position
@@ -54,6 +57,7 @@ class Game a where
 data Message = ClientHello ClientInfo
              | ServerHello GameParams
              | ServerState World
+             | AddPlayer PlayerName
              | PlayerMove Position
              deriving ( Show, Eq, Generic )
 

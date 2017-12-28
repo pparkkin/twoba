@@ -61,10 +61,10 @@ addPlayerConnection (PlayerMap ps) n c = atomically $ do
   when (M.size m < 2) $
     writeTVar ps (M.insert n c m)
 
-mapPlayerConnections_ :: (WS.Connection -> IO ()) -> PlayerMap -> IO ()
+mapPlayerConnections_ :: (T.Text -> WS.Connection -> IO ()) -> PlayerMap -> IO ()
 mapPlayerConnections_ a (PlayerMap ps) = do
   m <- atomically $ readTVar ps
-  mapM_ a (M.elems m)
+  sequence_ $ M.elems $ M.mapWithKey a m
 
 playerCount :: PlayerMap -> IO Int
 playerCount (PlayerMap ps) = atomically $ do
@@ -88,9 +88,13 @@ takeEvents (EventPipe v) = atomically $ swapTVar v []
 type Consumer = (EventPipe -> IO ())
 type Producer = (EventPipe -> IO ())
 
+displayForPlayer :: World -> T.Text -> WS.Connection -> IO ()
+displayForPlayer world name conn =
+  WS.sendTextData conn (serialize (ServerState world))
+
 display :: PlayerMap -> World -> IO ()
 display ps world =
-  mapPlayerConnections_ (\conn -> WS.sendTextData conn (serialize (ServerState world))) ps
+  mapPlayerConnections_ (displayForPlayer world) ps
 
 processInput :: EventPipe -> World -> IO World
 processInput p w = do
@@ -158,6 +162,7 @@ wsapp g@(GameContext params ps e w) pending = do
     WS.forkPingThread conn 30
     putStrLn "Waiting for client hello."
     msg <- WS.receiveData conn :: IO ByteString
+    -- FIXME: Needs checking for name collisions
     putStrLn $ "Got client hello (" ++ show msg ++ "). Sending server hello."
     WS.sendTextData conn (serialize (ServerHello params))
     addPlayerConnection ps (decodeUtf8 msg) conn

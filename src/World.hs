@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module World where
 
 import Data.Bits ( xor )
@@ -15,7 +17,7 @@ import Types
 newWorld :: RandomGen g => g -> Int -> Int -> World
 newWorld seed x y =
   World (generateGrid seed x y)
-        initPlayer
+        ("", initPlayer)
         (initEnemy x y)
 
 fillGrid :: Cell -> Int -> Int -> Grid
@@ -51,7 +53,7 @@ initEnemy :: Int -> Int -> Object
 initEnemy x y = Object bottomRight
   where bottomRight = V2 (x-1) (y-1)
 
-cellAt :: World -> (Int, Int) -> Cell
+cellAt :: World -> Coord -> Cell
 cellAt (World os _ _) (x, y) =
   if (x < 0 || y < 0) || (x > 19 || y > 19)
     then Wall
@@ -61,12 +63,15 @@ cellsAt :: World -> [(Int, Int)] -> [Cell]
 cellsAt _ [] = []
 cellsAt w (c:cs) = cellAt w c : cellsAt w cs
 
-canMoveTo :: Cell -> Bool
-canMoveTo Wall = False
-canMoveTo Empty = True
+canMoveToCell :: Cell -> Bool
+canMoveToCell Wall = False
+canMoveToCell Empty = True
+
+canMoveTo :: World -> Coord -> Bool
+canMoveTo w p = canMoveToCell $ cellAt w p
 
 openNeighbors :: World -> Coord -> [Coord]
-openNeighbors w = filter (canMoveTo . cellAt w) . neighbors fourDirs
+openNeighbors w = filter (canMoveTo w) . neighbors fourDirs
 
 neighborCells :: World -> (Int, Int) -> [Cell]
 neighborCells w = map (cellAt w) . allNeighbors

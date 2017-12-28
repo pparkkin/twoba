@@ -25,11 +25,17 @@ decrementCooldown o@(ActiveObject _ _ _ c)
   | c <= 0 = o { cooldown = 0 }
   | otherwise = o { cooldown = c - 1 }
 
-updatePlayer :: World -> ActiveObject -> ActiveObject
-updatePlayer w p@(ActiveObject l d _ c)
-  | l == d = decrementCooldown p
-  | c > 0 = decrementCooldown p
-  | otherwise = p { pos = d, cooldown = 12 }
+resetCooldown :: ActiveObject -> ActiveObject
+resetCooldown o = o { cooldown = 12 }
+
+moveObject :: Position -> ActiveObject -> ActiveObject
+moveObject d o = o { pos = d }
+
+updatePlayer :: World -> (PlayerName, ActiveObject) -> (PlayerName, ActiveObject)
+updatePlayer w (n, o@(ActiveObject l d _ c))
+  | l == d = (n, decrementCooldown o)
+  | c > 0 = (n, decrementCooldown o)
+  | otherwise = (n, resetCooldown . moveObject d $ o)
 
 updateEnemy :: World -> Object -> Object
 updateEnemy _ e = e
@@ -40,23 +46,19 @@ updateWorld w@(World _ p e) =
     , enemy = updateEnemy w e
     }
 
-moveObject :: World -> Position -> ActiveObject -> ActiveObject
-moveObject w p@(V2 x' y') o =
-  if length path > speed o
-    then o
-    else o { dst = p }
-  where
-    path = findPath w (x, y) (x', y')
-    (V2 x y) = pos (o :: ActiveObject)
+setObjectDest :: Position -> ActiveObject -> ActiveObject
+setObjectDest p o = o { dst = p }
 
-movePlayer :: World -> Position -> ActiveObject -> ActiveObject
-movePlayer w p@(V2 x y) o =
-  case cellAt w (x, y) of
-    Empty -> moveObject w p o
-    Wall -> o
+setPlayerDest :: World -> Position -> (PlayerName, ActiveObject) -> (PlayerName, ActiveObject)
+setPlayerDest w p@(V2 x y) (n, o) =
+  if canMoveTo w (x, y) && pathLength w cur p <= speed o
+    then (n, setObjectDest p o)
+    else (n, o)
+  where
+    cur = pos (o :: ActiveObject)
 
 handleInput :: Message -> World -> World
-handleInput (PlayerMove p) w = w { player = movePlayer w p (player w) }
+handleInput (PlayerMove p) w = w { player = setPlayerDest w p (player w) }
 handleInput _ w = w
 
 instance Game World where

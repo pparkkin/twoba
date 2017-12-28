@@ -144,7 +144,7 @@ function processInputEvent(app, ws, e) {
   } else if (e.type == "serverstate") {
     state.grid = e.data["grid"];
     state.dirty = true;
-    var p = e.data["player"];
+    var p = e.data["player"][1];
     player.location = {
       x: p["pos"]["x"],
       y: p["pos"]["y"]

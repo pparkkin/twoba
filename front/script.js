@@ -1,7 +1,7 @@
 // State from server
 var state = {
-  grid: null,
-  dirty: false // only process if dirty
+  grid: null
+  // dirty: false // only process if dirty
 };
 // Player state
 var player = {
@@ -171,7 +171,7 @@ function renderEnemy(app) {
 }
 
 function render(app) {
-  renderGrid(app);
+  // renderGrid(app);
   renderEnemy(app);
   renderPlayer(app);
 }
@@ -198,14 +198,15 @@ function processInputEvent(app, ws, e) {
   // console.log(e);
   if (e.type == "initializegame") {
     view.gridSize = {
-      x: e.data[0], y: e.data[1]
+      x: e.data["params"][0], y: e.data["params"][1]
     };
     // Make the view size the largest multiple of grid size that fits in the window
     view.viewSize = {
       x: window.innerWidth - (window.innerWidth % view.gridSize.x),
       y: window.innerHeight - (window.innerHeight % view.gridSize.x)
     };
-    initView(app);
+    initView(app, e.data["grid"]);
+    state.grid = e.data["grid"];
   } else if (e.type == "playermove") {
     ws.send(JSON.stringify({
       tag: "PlayerMove",
@@ -214,9 +215,7 @@ function processInputEvent(app, ws, e) {
       }
     }));
   } else if (e.type == "serverstate") {
-    state.grid = e.data["grid"];
-    state.dirty = true;
-    let p = findPlayerData(e.data["players"], player.name);
+    let p = e.data["player"];
     if (p != null) {
       player.location = {
         x: p["pos"]["x"],
@@ -233,7 +232,7 @@ function processInputEvent(app, ws, e) {
       player.cooldown = p["cooldown"];
       player.dirty = true;
     }
-    let n = findEnemyData(e.data["players"], player.name);
+    let n = e.data["enemy"];
     if (n != null) {
       enemy.location = {
         x: n["pos"]["x"],
@@ -262,7 +261,7 @@ function gameLoop(app, ws) {
   render(app);
 }
 
-function initGrid(app) {
+function initGrid(app, grid) {
   view.grid = [];
   for (var i = 0; i < view.gridSize.y; i++) {
     var row = [];
@@ -274,7 +273,11 @@ function initGrid(app) {
       sprite.height = cellHeight();
       sprite.x = j * cellWidth();
       sprite.y = i * cellHeight();
-      sprite.visible = false;
+      if (grid[i][j] == "Wall") {
+        sprite.visible = true;
+      } else {
+        sprite.visible = false;
+      }
       app.stage.addChild(sprite);
       row.push(sprite);
     }
@@ -321,9 +324,9 @@ function initEnemy(app) {
   app.stage.addChild(view.enemySprite);
 }
 
-function initView(app) {
+function initView(app, grid) {
   app.renderer.resize(view.viewSize.x, view.viewSize.y);
-  initGrid(app);
+  initGrid(app, grid);
   initPlayer(app);
   initEnemy(app);
 }

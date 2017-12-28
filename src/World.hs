@@ -15,9 +15,9 @@ import qualified Data.Text as T
 
 import Types
 
-newWorld :: RandomGen g => g -> Int -> Int -> World
-newWorld seed x y =
-  World (generateGrid seed x y) []
+newWorld :: RandomGen g => GameParams -> g -> Int -> Int -> World
+newWorld params seed x y =
+  World params (generateGrid seed x y) []
 
 fillGrid :: Cell -> Int -> Int -> Grid
 fillGrid c x y = chunksOf x . replicate (x * y) $ c
@@ -55,7 +55,7 @@ initPlayer SecondPlayer n = (n, ActiveObject bottomRight bottomRight 5 0)
   where bottomRight = V2 19 19
 
 cellAt :: World -> Coord -> Cell
-cellAt (World os _) (x, y) =
+cellAt (World _ os _) (x, y) =
   if (x < 0 || y < 0) || (x > 19 || y > 19)
     then Wall
     else (os !! y) !! x

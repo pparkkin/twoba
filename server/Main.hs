@@ -49,9 +49,9 @@ data GameContext = GameContext
 
 type Event = (PlayerName, ByteString)
 
-displayForPlayer :: World -> T.Text -> WS.Connection -> IO ()
+displayForPlayer :: World -> PlayerName -> WS.Connection -> IO ()
 displayForPlayer world name conn =
-  WS.sendTextData conn (serialize (ServerState world))
+  WS.sendTextData conn (output name world)
 
 display :: ConnectionMap PlayerName -> World -> IO ()
 display ps world =
@@ -126,7 +126,7 @@ wsapp g@(GameContext params ps e w) pending = do
     let name = decodeUtf8 msg
     -- FIXME: Needs checking for name collisions
     putStrLn $ "Got client hello (" ++ show msg ++ "). Sending server hello."
-    WS.sendTextData conn (serialize (ServerHello params))
+    WS.sendTextData conn (serialize (ServerHello (worldInit w)))
     addConnection ps name conn
     pushEvent e (name, serialize AddPlayer)
     eventListener name conn e

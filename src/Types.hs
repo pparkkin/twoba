@@ -21,8 +21,19 @@ data GameParams = GameParams GridDimensions
                   deriving ( Show, Eq, Generic )
 
 data World = World
-  { grid :: Grid
+  { params :: GameParams
+  , grid :: Grid
   , players :: [(PlayerName, ActiveObject)]
+  } deriving ( Show, Eq, Generic )
+
+data WorldInit = WorldInit
+  { params :: GameParams
+  , grid :: Grid
+  } deriving ( Show, Eq, Generic )
+
+data WorldProjection = WorldProjection
+  { player :: ActiveObject
+  , enemy :: Maybe Object
   } deriving ( Show, Eq, Generic )
 
 type Grid = [[Cell]]
@@ -50,12 +61,13 @@ type Second = Double
 class Game a where
   data Params a :: *
   input :: PlayerName -> BS.ByteString -> a -> a
+  output :: PlayerName -> a -> BS.ByteString
   update :: Second -> a -> a
   newWorld :: RandomGen g => Params a -> g -> a
 
 data Message = ClientHello ClientInfo
-             | ServerHello GameParams
-             | ServerState World
+             | ServerHello WorldInit
+             | ServerState WorldProjection
              | AddPlayer
              | PlayerMove Position
              deriving ( Show, Eq, Generic )

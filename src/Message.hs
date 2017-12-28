@@ -32,8 +32,10 @@ instance ToJSON Object
 instance FromJSON Object
 instance ToJSON ActiveObject
 instance FromJSON ActiveObject
-instance ToJSON World
-instance FromJSON World
+instance ToJSON WorldInit
+instance FromJSON WorldInit
+instance ToJSON WorldProjection
+instance FromJSON WorldProjection
 
 instance ToJSON Message
 instance FromJSON Message

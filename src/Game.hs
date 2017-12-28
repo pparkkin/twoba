@@ -41,7 +41,7 @@ updatePlayers :: World -> [(PlayerName, ActiveObject)] -> [(PlayerName, ActiveOb
 updatePlayers w = map (updatePlayer w)
 
 updateWorld :: World -> World
-updateWorld w@(World _ p) =
+updateWorld w@(World _ _ p) =
   w { players = updatePlayers w p
     }
 
@@ -49,7 +49,7 @@ setObjectDest :: Position -> ActiveObject -> ActiveObject
 setObjectDest p o = o { dst = p }
 
 setPlayerDest :: PlayerName -> Position -> World -> World
-setPlayerDest n p@(V2 x y) w@(World _ ps) = w { players = aux ps }
+setPlayerDest n p@(V2 x y) w@(World _ _ ps) = w { players = aux ps }
   where
     aux [] = []
     aux ((n',o):rs)
@@ -63,7 +63,7 @@ setPlayerDest n p@(V2 x y) w@(World _ ps) = w { players = aux ps }
         cur = pos (o :: ActiveObject)
 
 addPlayer :: PlayerName -> World -> World
-addPlayer n w@(World _ ps)
+addPlayer n w@(World _ _ ps)
   | length ps == 0 = w { players = initPlayer FirstPlayer n : ps }
   | length ps == 1 = w { players = initPlayer SecondPlayer n : ps }
   | otherwise = w
@@ -73,11 +73,34 @@ handleInput n (PlayerMove p) w = setPlayerDest n p w
 handleInput n AddPlayer w = addPlayer n w
 handleInput _ _ w = w
 
+playerObjectFor :: PlayerName -> World -> ActiveObject
+playerObjectFor n w =
+  case lookup n (players w) of
+    Just a -> a
+
+enemyObjectFor :: PlayerName -> World -> Maybe Object
+enemyObjectFor n w = enemyObject (players w)
+  where
+    enemyObject [] = Nothing
+    enemyObject ((n',o):ps)
+      | n' /= n = Just $ Object (pos (o :: ActiveObject))
+      | otherwise = enemyObject ps
+
+projectWorld :: PlayerName -> World -> WorldProjection
+projectWorld n w = WorldProjection player enemy
+  where
+    player = playerObjectFor n w
+    enemy = enemyObjectFor n w
+
+worldInit :: World -> WorldInit
+worldInit (World params grid _) = WorldInit params grid
+
 instance Game World where
   data Params World = Params GameParams
   input n bs world =
     case deserialize bs of
       Just m -> handleInput n m world
       Nothing -> world
+  output n = serialize . ServerState . projectWorld n
   update _ = updateWorld
-  newWorld (Params (GameParams (x, y))) seed = World.newWorld seed x y
+  newWorld (Params p@(GameParams (x, y))) seed = World.newWorld p seed x y

@@ -103,6 +103,36 @@ function renderProgressBar(app, gridX, gridY, progress) {
   app.stage.addChild(view.playerProgressBar);
 }
 
+function spriteTurnLeft(sprite) {
+  sprite.anchor.x = 1;
+  sprite.scale.x = -1;
+  sprite.width = cellWidth();
+  sprite.height = cellHeight();
+}
+
+function spriteTurnRight(sprite) {
+  sprite.anchor.x = 0;
+  sprite.scale.x = 1;
+  sprite.width = cellWidth();
+  sprite.height = cellHeight();
+}
+
+function playerTurnLeft() {
+  spriteTurnLeft(view.playerSprite);
+}
+
+function playerTurnRight() {
+  spriteTurnRight(view.playerSprite);
+}
+
+function enemyTurnLeft() {
+  spriteTurnLeft(view.enemySprite);
+}
+
+function enemyTurnRight() {
+  spriteTurnRight(view.enemySprite);
+}
+
 function renderPlayer(app) {
   if (!player.dirty) { return; }
   view.playerSprite.x = player.location.x * cellWidth();
@@ -116,6 +146,11 @@ function renderPlayer(app) {
     view.targetSprite.visible = false;
   }
   view.playerSprite.visible = true;
+  if (player.location.x > enemy.location.x) {
+    playerTurnLeft();
+  } else {
+    playerTurnRight();
+  }
   app.stage.addChild(view.playerSprite);
   renderProgressBar(app, player.location.x, player.location.y, player.cooldown / 12);
   player.dirty = false;
@@ -126,6 +161,11 @@ function renderEnemy(app) {
   view.enemySprite.x = enemy.location.x * cellWidth();
   view.enemySprite.y = enemy.location.y * cellHeight();
   view.enemySprite.visible = true;
+  if (enemy.location.x > player.location.x) {
+    enemyTurnLeft();
+  } else {
+    enemyTurnRight();
+  }
   app.stage.addChild(view.enemySprite);
   enemy.dirty = false;
 }

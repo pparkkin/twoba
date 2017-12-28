@@ -30,11 +30,13 @@ var view = {
 };
 
 function cellWidth() {
-  return view.viewSize.x / view.gridSize.x;
+  let width = view.viewSize.x / view.gridSize.x,
+      height = view.viewSize.y / view.gridSize.y;
+  return Math.min(width, height);
 }
 
 function cellHeight() {
-  return view.viewSize.y / view.gridSize.y;
+  return cellWidth();
 }
 
 //Aliases

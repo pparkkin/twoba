@@ -58,7 +58,7 @@ newPlayerMap = atomically $ do
 addPlayerConnection :: PlayerMap -> T.Text -> WS.Connection -> IO ()
 addPlayerConnection (PlayerMap ps) n c = atomically $ do
   m <- readTVar ps
-  when (M.size m < 2) $ do
+  when (M.size m < 2) $
     writeTVar ps (M.insert n c m)
 
 mapPlayerConnections_ :: (WS.Connection -> IO ()) -> PlayerMap -> IO ()
@@ -89,7 +89,7 @@ type Consumer = (EventPipe -> IO ())
 type Producer = (EventPipe -> IO ())
 
 display :: PlayerMap -> World -> IO ()
-display ps world = do
+display ps world =
   mapPlayerConnections_ (\conn -> WS.sendTextData conn (serialize (ServerState world))) ps
 
 processInput :: EventPipe -> World -> IO World
@@ -113,7 +113,7 @@ gameLoop world beginTime dt conns input = do
 getTimeInSeconds :: IO Double
 getTimeInSeconds = do
   t <- getCPUTime
-  return ((fromIntegral t) / 10^12)
+  return (fromIntegral t / 10^12)
 
 -- Fixed 3 FPS
 frameTime = 1.0 / 3.0
@@ -158,7 +158,7 @@ wsapp g@(GameContext params ps e w) pending = do
     WS.forkPingThread conn 30
     putStrLn "Waiting for client hello."
     msg <- WS.receiveData conn :: IO ByteString
-    putStrLn $ "Got client hello (" ++ (show msg) ++ "). Sending server hello."
+    putStrLn $ "Got client hello (" ++ show msg ++ "). Sending server hello."
     WS.sendTextData conn (serialize (ServerHello params))
     addPlayerConnection ps (decodeUtf8 msg) conn
     eventListener conn e

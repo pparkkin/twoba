@@ -19,7 +19,7 @@ newWorld seed x y =
         (initEnemy x y)
 
 fillGrid :: Cell -> Int -> Int -> Grid
-fillGrid c x y = chunksOf x . take (x * y) . repeat $ c
+fillGrid c x y = chunksOf x . replicate (x * y) $ c
 
 inGrid :: Int -> Int -> (Int, Int) -> Bool
 inGrid x y (x', y') = x' >= 0 && x' < x && y' >= 0 && y' < y

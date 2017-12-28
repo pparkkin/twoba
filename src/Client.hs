@@ -11,7 +11,7 @@ import Network.WebSockets ( Connection
 import Types
 
 testClient :: IO ()
-testClient = do
+testClient =
   runClient "localhost" 3000 "" start
   where
     start :: Connection -> IO ()

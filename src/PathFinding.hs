@@ -25,7 +25,7 @@ findPathStep w closed (p@(h:_):ps) end
         frontier = newPaths ++ ps
 
 sortPaths :: Coord -> [Path] -> [Path]
-sortPaths e = sortBy (compare `on` (scorePath e))
+sortPaths e = sortBy (compare `on` scorePath e)
 
 scorePath :: Coord -> Path -> Int
 scorePath _ [] = maxBound

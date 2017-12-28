@@ -1,13 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
 module Game where
 
 import Debug.Trace ( trace )
-
-import GHC.Generics
 
 import Data.List ( find )
 import Linear.V2 ( V2(V2) )
@@ -68,5 +65,5 @@ instance Game World where
     case deserialize bs of
       Just m -> handleInput m world
       Nothing -> world
-  update _ world = updateWorld world
+  update _ = updateWorld
   newWorld (Params (GameParams (x, y))) seed = World.newWorld seed x y

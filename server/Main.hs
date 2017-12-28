@@ -123,12 +123,13 @@ wsapp g@(GameContext params ps e w) pending = do
     WS.forkPingThread conn 30
     putStrLn "Waiting for client hello."
     msg <- WS.receiveData conn :: IO ByteString
+    let name = decodeUtf8 msg
     -- FIXME: Needs checking for name collisions
     putStrLn $ "Got client hello (" ++ show msg ++ "). Sending server hello."
     WS.sendTextData conn (serialize (ServerHello params))
-    addConnection ps (decodeUtf8 msg) conn
-    pushEvent e (decodeUtf8 msg, serialize AddPlayer)
-    eventListener (decodeUtf8 msg) conn e
+    addConnection ps name conn
+    pushEvent e (name, serialize AddPlayer)
+    eventListener name conn e
 
 eventListener :: PlayerName -> WS.Connection -> EventPipe Event -> IO ()
 eventListener n conn p = forever $ do

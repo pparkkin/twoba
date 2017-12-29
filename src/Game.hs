@@ -31,11 +31,29 @@ resetCooldown o = o { cooldown = 12 }
 moveObject :: Position -> ActiveObject -> ActiveObject
 moveObject d o = o { pos = d }
 
+isDestinationEnemy  :: World -> (PlayerName, ActiveObject) -> Bool
+isDestinationEnemy w (n, o) =
+  case enemyObjectFor n w of
+    Nothing -> False
+    Just e -> enemyPos == ownDst
+      where
+        enemyPos = pos (e :: Object)
+        ownDst = dst (o :: ActiveObject)
+
+isDestinationWall :: World -> (PlayerName, ActiveObject) -> Bool
+isDestinationWall w (n, o) = not $ canMoveTo w (x, y)
+  where
+    (V2 x y) = dst (o :: ActiveObject)
+
+canMove :: World -> (PlayerName, ActiveObject) -> Bool
+canMove w p = not (isDestinationEnemy w p) && not (isDestinationWall w p)
+
 updatePlayer :: World -> (PlayerName, ActiveObject) -> (PlayerName, ActiveObject)
-updatePlayer w (n, o@(ActiveObject l d _ c))
+updatePlayer w p@(n, o@(ActiveObject l d _ c))
   | l == d = (n, decrementCooldown o)
   | c > 0 = (n, decrementCooldown o)
-  | otherwise = (n, resetCooldown . moveObject d $ o)
+  | canMove w p = (n, resetCooldown . moveObject d $ o)
+  | otherwise = (n, decrementCooldown o)
 
 updatePlayers :: World -> [(PlayerName, ActiveObject)] -> [(PlayerName, ActiveObject)]
 updatePlayers w = map (updatePlayer w)

@@ -25,6 +25,14 @@ decrementCooldown o@(ActiveObject _ _ _ c _)
   | c <= 0 = o { cooldown = 0 }
   | otherwise = o { cooldown = c - 1 }
 
+decrementHp :: Int -> ActiveObject -> ActiveObject
+decrementHp n o@(ActiveObject _ _ _ _ h)
+  | h <= 0 = o { hp = 0 }
+  | otherwise = o { hp = h - n }
+
+decrementPlayerHp :: Int -> Player -> Player
+decrementPlayerHp m (Player n o) = (Player n (decrementHp m o))
+
 resetCooldown :: ActiveObject -> ActiveObject
 resetCooldown o = o { cooldown = 12 }
 
@@ -48,8 +56,17 @@ isWall w p = not $ canMoveTo w (x, y)
 canMove :: World -> (PlayerName, ActiveObject) -> Position -> Bool
 canMove w (n, _) p = not (isEnemy w n p) && not (isWall w p)
 
-updatePlayer :: World -> Player -> Player
-updatePlayer w p@(Player n o@(ActiveObject l d _ c _))
+objectDistance :: ActiveObject -> ActiveObject -> Int
+objectDistance o1 o2 = distance (x1, y1) (x2, y2)
+  where
+    (V2 x1 y1) = pos (o1 :: ActiveObject)
+    (V2 x2 y2) = pos (o2 :: ActiveObject)
+
+playerDistance :: Player -> Player -> Int
+playerDistance (Player _ o1) (Player _ o2) = objectDistance o1 o2
+
+movePlayer :: World -> Player -> Player
+movePlayer w p@(Player n o@(ActiveObject l d _ c _))
   | l == d = p { object = decrementCooldown o }
   | c > 0 = p { object = decrementCooldown o }
   | otherwise = p { object = snd $ foldl stepObject (False, o) path }
@@ -64,13 +81,21 @@ updatePlayer w p@(Player n o@(ActiveObject l d _ c _))
         | canMove w (n, o) (V2 x y) = (False, resetCooldown . moveObject (V2 x y) $ o)
         | otherwise = (True, decrementCooldown . resetDestination $ o)
 
-updatePlayers :: World -> [Player] -> [Player]
-updatePlayers w = map (updatePlayer w)
+movePlayers :: World -> World
+movePlayers w@(World _ _ ps) = w { players = ps' }
+  where
+    ps' = map (movePlayer w) ps
+
+attackPlayers :: World -> World
+attackPlayers w@(World _ _ ps@(p1:p2:[])) = w { players = ps' }
+  where
+    ps' = if playerDistance p1 p2 <= 1
+            then map (decrementPlayerHp 1) ps
+            else ps
+attackPlayers w = w
 
 updateWorld :: World -> World
-updateWorld w@(World _ _ p) =
-  w { players = updatePlayers w p
-    }
+updateWorld = attackPlayers . movePlayers
 
 setObjectDest :: Position -> ActiveObject -> ActiveObject
 setObjectDest p o = o { dst = p }

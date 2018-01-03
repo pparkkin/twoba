@@ -71,6 +71,9 @@ canMoveToCell Empty = True
 canMoveTo :: World -> Coord -> Bool
 canMoveTo w p = canMoveToCell $ cellAt w p
 
+distance :: Coord -> Coord -> Int
+distance (x1, y1) (x2, y2) = (abs (x2 - x1)) + (abs (y2 - y1))
+
 openNeighbors :: World -> Coord -> [Coord]
 openNeighbors w = filter (canMoveTo w) . neighbors fourDirs
 

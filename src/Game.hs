@@ -31,31 +31,40 @@ resetCooldown o = o { cooldown = 12 }
 moveObject :: Position -> ActiveObject -> ActiveObject
 moveObject d o = o { pos = d }
 
-isDestinationEnemy  :: World -> (PlayerName, ActiveObject) -> Bool
-isDestinationEnemy w (n, o) =
+resetDestination :: ActiveObject -> ActiveObject
+resetDestination o = o { dst = pos (o :: ActiveObject) }
+
+isEnemy  :: World -> PlayerName -> Position -> Bool
+isEnemy w n p =
   case enemyObjectFor n w of
     Nothing -> False
-    Just e -> enemyPos == ownDst
-      where
-        enemyPos = pos (e :: Object)
-        ownDst = dst (o :: ActiveObject)
+    Just e -> p == pos (e :: Object)
 
-isDestinationWall :: World -> (PlayerName, ActiveObject) -> Bool
-isDestinationWall w (n, o) = not $ canMoveTo w (x, y)
+isWall :: World -> Position -> Bool
+isWall w p = not $ canMoveTo w (x, y)
   where
-    (V2 x y) = dst (o :: ActiveObject)
+    (V2 x y) = p
 
-canMove :: World -> (PlayerName, ActiveObject) -> Bool
-canMove w p = not (isDestinationEnemy w p) && not (isDestinationWall w p)
+canMove :: World -> (PlayerName, ActiveObject) -> Position -> Bool
+canMove w (n, _) p = not (isEnemy w n p) && not (isWall w p)
 
-updatePlayer :: World -> (PlayerName, ActiveObject) -> (PlayerName, ActiveObject)
-updatePlayer w p@(n, o@(ActiveObject l d _ c))
-  | l == d = (n, decrementCooldown o)
-  | c > 0 = (n, decrementCooldown o)
-  | canMove w p = (n, resetCooldown . moveObject d $ o)
-  | otherwise = (n, decrementCooldown o)
+updatePlayer :: World -> Player -> Player
+updatePlayer w p@(Player n o@(ActiveObject l d _ c) _)
+  | l == d = p { object = decrementCooldown o }
+  | c > 0 = p { object = decrementCooldown o }
+  | otherwise = p { object = snd $ foldl stepObject (False, o) path }
+    where
+      path = findPath w ep (x, y) (x', y')
+      (V2 x y) = l
+      (V2 x' y') = d
+      ep = moveBlockListCFor n w
+      stepObject :: (Bool, ActiveObject) -> Coord -> (Bool, ActiveObject)
+      stepObject a@(True, _) _ = a -- Skip the rest
+      stepObject (_, o) (x, y)
+        | canMove w (n, o) (V2 x y) = (False, resetCooldown . moveObject (V2 x y) $ o)
+        | otherwise = (True, decrementCooldown . resetDestination $ o)
 
-updatePlayers :: World -> [(PlayerName, ActiveObject)] -> [(PlayerName, ActiveObject)]
+updatePlayers :: World -> [Player] -> [Player]
 updatePlayers w = map (updatePlayer w)
 
 updateWorld :: World -> World
@@ -70,15 +79,16 @@ setPlayerDest :: PlayerName -> Position -> World -> World
 setPlayerDest n p@(V2 x y) w@(World _ _ ps) = w { players = aux ps }
   where
     aux [] = []
-    aux ((n',o):rs)
-      | n' == n = (n', setDest o) : rs
-      | otherwise = (n', o) : aux rs
+    aux ((Player n' o hp):rs)
+      | n' == n = (Player n' (setDest o) hp) : rs
+      | otherwise = (Player n' o hp) : aux rs
     setDest o =
-      if canMoveTo w (x, y) && pathLength w cur p <= speed o
+      if not (isWall w p) && pathLength w ep cur p <= speed o
         then setObjectDest p o
         else o
       where
         cur = pos (o :: ActiveObject)
+        ep = moveBlockListCFor n w
 
 addPlayer :: PlayerName -> World -> World
 addPlayer n w@(World _ _ ps)
@@ -91,17 +101,33 @@ handleInput n (PlayerMove p) w = setPlayerDest n p w
 handleInput n AddPlayer w = addPlayer n w
 handleInput _ _ w = w
 
+playerLookup :: PlayerName -> [Player] -> Maybe Player
+playerLookup _ [] = Nothing
+playerLookup n (p:ps)
+  | name p == n = Just p
+  | otherwise = playerLookup n ps
+
 playerObjectFor :: PlayerName -> World -> ActiveObject
 playerObjectFor n w =
-  case lookup n (players w) of
-    Just a -> a
+  case playerLookup n (players w) of
+    Just a -> object a
 
+moveBlockListFor :: PlayerName -> World -> [Position]
+moveBlockListFor n w =
+  case enemyObjectFor n w of
+    Nothing -> []
+    Just e -> [pos (e :: Object)]
+
+moveBlockListCFor :: PlayerName -> World -> [Coord]
+moveBlockListCFor n w = map (\(V2 x y) -> (x, y)) (moveBlockListFor n w)
+
+-- NOTE: Following assumes two players only
 enemyObjectFor :: PlayerName -> World -> Maybe Object
 enemyObjectFor n w = enemyObject (players w)
   where
     enemyObject [] = Nothing
-    enemyObject ((n',o):ps)
-      | n' /= n = Just $ Object (pos (o :: ActiveObject))
+    enemyObject (p:ps)
+      | name p /= n = Just $ Object (pos (object p :: ActiveObject))
       | otherwise = enemyObject ps
 
 projectWorld :: PlayerName -> World -> WorldProjection

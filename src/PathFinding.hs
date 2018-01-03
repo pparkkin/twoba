@@ -9,15 +9,15 @@ import Linear.V2 ( V2(V2) )
 import Types
 import World
 
-findPath :: World -> Coord -> Coord -> Path
-findPath w start end
+findPath :: World -> [Coord] -> Coord -> Coord -> Path
+findPath w blocked start end
   | start == end = [start]
-  | otherwise = reverse $ findPathStep w [] (sortPaths end frontier) end
+  | otherwise = reverse $ findPathStep w blocked (sortPaths end frontier) end
       where
         frontier = map (:[]) (openNeighbors w start)
 
-pathLength :: World -> Position -> Position -> Int
-pathLength w (V2 x y) (V2 x' y') = length $ findPath w (x, y) (x', y')
+pathLength :: World -> [Coord] -> Position -> Position -> Int
+pathLength w blocked (V2 x y) (V2 x' y') = length $ findPath w blocked (x, y) (x', y')
 
 findPathStep :: World -> [Coord] -> [Path] -> Coord -> Path
 findPathStep w closed (p@(h:_):ps) end

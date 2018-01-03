@@ -23,7 +23,7 @@ data GameParams = GameParams GridDimensions
 data World = World
   { params :: GameParams
   , grid :: Grid
-  , players :: [(PlayerName, ActiveObject)]
+  , players :: [Player]
   } deriving ( Show, Eq, Generic )
 
 data WorldInit = WorldInit
@@ -41,6 +41,12 @@ type Grid = [[Cell]]
 data Cell = Empty
           | Wall
           deriving ( Show, Eq, Generic )
+
+data Player = Player
+  { name :: PlayerName
+  , object :: ActiveObject
+  , hp :: Int
+  } deriving ( Show, Eq, Generic )
 
 type PlayerName = T.Text
 

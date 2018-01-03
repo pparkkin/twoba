@@ -20,7 +20,7 @@ instance FromJSON GameParams
 
 instance ToJSON a => ToJSON (V2 a) where
   toJSON (V2 x y) =
-    object ["x" .= x, "y" .= y]
+    Data.Aeson.object ["x" .= x, "y" .= y]
 instance FromJSON a => FromJSON (V2 a) where
   parseJSON = withObject "V2" $ \v -> V2
     <$> v .: "x"

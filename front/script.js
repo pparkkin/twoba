@@ -15,6 +15,7 @@ var player = {
 // Enemy state
 var enemy = {
   location: null,
+  dead: false,
   dirty: false
 };
 // List of inputs
@@ -163,6 +164,15 @@ function enemyTurnRight() {
 
 function renderPlayer(app) {
   if (!player.dirty) { return; }
+  if (player.hp == 0) {
+    app.stage.removeChild(view.playerSprite);
+    view.playerSprite = new Sprite(
+      resources["sprites/dead-sprite.png"].texture
+    );
+    view.playerSprite.width = cellWidth();
+    view.playerSprite.height = cellHeight();
+    app.stage.addChild(view.playerSprite);
+  }
   view.playerSprite.x = player.location.x * cellWidth();
   view.playerSprite.y = player.location.y * cellHeight();
   if (player.destination != null) {
@@ -187,6 +197,15 @@ function renderPlayer(app) {
 
 function renderEnemy(app) {
   if (!enemy.dirty) { return; }
+  if (enemy.dead) {
+    app.stage.removeChild(view.enemySprite);
+    view.enemySprite = new Sprite(
+      resources["sprites/dead-sprite.png"].texture
+    );
+    view.enemySprite.width = cellWidth();
+    view.enemySprite.height = cellHeight();
+    app.stage.addChild(view.enemySprite);
+  }
   view.enemySprite.x = enemy.location.x * cellWidth();
   view.enemySprite.y = enemy.location.y * cellHeight();
   view.enemySprite.visible = true;
@@ -268,6 +287,7 @@ function processEnemyState(data) {
     x: data["pos"]["x"],
     y: data["pos"]["y"]
   };
+  enemy.dead = data["dead"];
   enemy.dirty = true;
 }
 
@@ -447,6 +467,7 @@ function load() {
     .add("sprites/player-sprite.png")
     .add("sprites/target-sprite.png")
     .add("sprites/enemy-sprite.png")
+    .add("sprites/dead-sprite.png")
     .load(setup);
 }
 

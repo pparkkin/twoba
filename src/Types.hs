@@ -51,6 +51,7 @@ type PlayerName = T.Text
 
 data Object = Object
   { pos :: Position
+  , dead :: Bool
   } deriving ( Show, Eq, Generic )
 
 data ActiveObject = ActiveObject

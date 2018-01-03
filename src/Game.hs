@@ -94,8 +94,17 @@ attackPlayers w@(World _ _ ps@(p1:p2:[])) = w { players = ps' }
             else ps
 attackPlayers w = w
 
+isDead :: Player -> Bool
+isDead (Player _ o) = hp o <= 0
+
+isGameOver :: World -> Bool
+isGameOver (World _ _ ps) = or (map isDead ps)
+
 updateWorld :: World -> World
-updateWorld = attackPlayers . movePlayers
+updateWorld w =
+  if isGameOver w
+    then w
+    else attackPlayers . movePlayers $ w
 
 setObjectDest :: Position -> ActiveObject -> ActiveObject
 setObjectDest p o = o { dst = p }
@@ -152,7 +161,7 @@ enemyObjectFor n w = enemyObject (players w)
   where
     enemyObject [] = Nothing
     enemyObject (p:ps)
-      | name p /= n = Just $ Object (pos (object p :: ActiveObject))
+      | name p /= n = Just $ Object (pos (object p :: ActiveObject)) (hp (object p) <= 0)
       | otherwise = enemyObject ps
 
 projectWorld :: PlayerName -> World -> WorldProjection

@@ -88,7 +88,7 @@ newGame params = do
   e <- newEventPipe
   m <- newConnectionMap
   seed <- getStdGen
-  let w = newWorld (Params params) seed
+  let w = newWorld params seed
   return (GameContext params m e w)
 
 runGame :: GameContext -> IO ()

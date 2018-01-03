@@ -66,13 +66,6 @@ type Position = V2 Int
 
 type Second = Double
 
-class Game a where
-  data Params a :: *
-  input :: PlayerName -> BS.ByteString -> a -> a
-  output :: PlayerName -> a -> BS.ByteString
-  update :: Second -> a -> a
-  newWorld :: RandomGen g => Params a -> g -> a
-
 data Message = ClientHello ClientInfo
              | ServerHello WorldInit
              | ServerState WorldProjection

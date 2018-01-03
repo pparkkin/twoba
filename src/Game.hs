@@ -174,12 +174,17 @@ projectWorld n w = WorldProjection player enemy
 worldInit :: World -> WorldInit
 worldInit (World params grid _) = WorldInit params grid
 
-instance Game World where
-  data Params World = Params GameParams
-  input n bs world =
-    case deserialize bs of
-      Just m -> handleInput n m world
-      Nothing -> world
-  output n = serialize . ServerState . projectWorld n
-  update _ = updateWorld
-  newWorld (Params p@(GameParams (x, y))) seed = World.newWorld p seed x y
+input :: PlayerName -> BS.ByteString -> World -> World
+input n bs world =
+  case deserialize bs of
+    Just m -> handleInput n m world
+    Nothing -> world
+
+output :: PlayerName -> World -> BS.ByteString
+output n = serialize . ServerState . projectWorld n
+
+update :: Second -> World -> World
+update _ = updateWorld
+
+newWorld :: RandomGen g => GameParams -> g -> World
+newWorld p@(GameParams (x, y)) seed = World.newWorld p seed x y

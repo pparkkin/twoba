@@ -45,7 +45,6 @@ data Cell = Empty
 data Player = Player
   { name :: PlayerName
   , object :: ActiveObject
-  , hp :: Int
   } deriving ( Show, Eq, Generic )
 
 type PlayerName = T.Text
@@ -53,11 +52,13 @@ type PlayerName = T.Text
 data Object = Object
   { pos :: Position
   } deriving ( Show, Eq, Generic )
+
 data ActiveObject = ActiveObject
   { pos :: Position
   , dst :: Position
   , speed :: Int
   , cooldown :: Int
+  , hp :: Int
   } deriving ( Show, Eq, Generic )
 
 type Position = V2 Int

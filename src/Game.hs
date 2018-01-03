@@ -21,7 +21,7 @@ import Types
 import World
 
 decrementCooldown :: ActiveObject -> ActiveObject
-decrementCooldown o@(ActiveObject _ _ _ c)
+decrementCooldown o@(ActiveObject _ _ _ c _)
   | c <= 0 = o { cooldown = 0 }
   | otherwise = o { cooldown = c - 1 }
 
@@ -49,7 +49,7 @@ canMove :: World -> (PlayerName, ActiveObject) -> Position -> Bool
 canMove w (n, _) p = not (isEnemy w n p) && not (isWall w p)
 
 updatePlayer :: World -> Player -> Player
-updatePlayer w p@(Player n o@(ActiveObject l d _ c) _)
+updatePlayer w p@(Player n o@(ActiveObject l d _ c _))
   | l == d = p { object = decrementCooldown o }
   | c > 0 = p { object = decrementCooldown o }
   | otherwise = p { object = snd $ foldl stepObject (False, o) path }
@@ -79,9 +79,9 @@ setPlayerDest :: PlayerName -> Position -> World -> World
 setPlayerDest n p@(V2 x y) w@(World _ _ ps) = w { players = aux ps }
   where
     aux [] = []
-    aux ((Player n' o hp):rs)
-      | n' == n = (Player n' (setDest o) hp) : rs
-      | otherwise = (Player n' o hp) : aux rs
+    aux ((Player n' o):rs)
+      | n' == n = (Player n' (setDest o)) : rs
+      | otherwise = (Player n' o) : aux rs
     setDest o =
       if not (isWall w p) && pathLength w ep cur p <= speed o
         then setObjectDest p o

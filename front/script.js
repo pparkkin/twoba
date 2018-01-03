@@ -9,6 +9,7 @@ var player = {
   location: null,
   destination: null,
   cooldown: 0,
+  hp: 0,
   dirty: false
 };
 // Enemy state
@@ -22,6 +23,7 @@ var input = [];
 var view = {
   grid: null, // [[<sprite>]]
   playerSprite: null,
+  playerHealthBar: null,
   playerProgressBar: null,
   targetSprite: null,
   enemySprite: null,
@@ -77,12 +79,38 @@ function renderGrid(app) {
   state.dirty = false;
 }
 
+function renderHealthBar(app, gridX, gridY, progress) {
+  if (view.playerHealthBar != null) {
+    app.stage.removeChild(view.playerHealthBar);
+    view.playerHealthBar = null;
+  }
+  if (progress <= 0) {
+    return;
+  }
+  let bottomPad = 5,
+      leftPad = 5,
+      rightPad = leftPad,
+      barHeight = 7,
+      fullBarWidth = cellWidth() - (leftPad + rightPad),
+      barWidth = fullBarWidth * progress,
+      barX = (cellWidth() * gridX) + leftPad,
+      barY = (cellHeight() * gridY) + (cellHeight() - (bottomPad + barHeight));
+  view.playerHealthBar = new Graphics();
+  view.playerHealthBar.beginFill(0xFF3333);
+  view.playerHealthBar.lineStyle(1, 0x000000, 1);
+  view.playerHealthBar.drawRect(0, 0, barWidth, barHeight);
+  view.playerHealthBar.endFill();
+  view.playerHealthBar.x = barX;
+  view.playerHealthBar.y = barY;
+  app.stage.addChild(view.playerHealthBar);
+}
+
 function renderProgressBar(app, gridX, gridY, progress) {
   if (view.playerProgressBar != null) {
     app.stage.removeChild(view.playerProgressBar);
     view.playerProgressBar = null;
   }
-  if (player.cooldown <= 0) {
+  if (progress <= 0) {
     return;
   }
   let topPad = 3,
@@ -152,6 +180,7 @@ function renderPlayer(app) {
     playerTurnRight();
   }
   app.stage.addChild(view.playerSprite);
+  renderHealthBar(app, player.location.x, player.location.y, player.hp / 20);
   renderProgressBar(app, player.location.x, player.location.y, player.cooldown / 12);
   player.dirty = false;
 }
@@ -230,6 +259,7 @@ function processPlayerState(data) {
     player.destination = null;
   }
   player.cooldown = data["cooldown"];
+  player.hp = data["hp"];
   player.dirty = true;
 }
 

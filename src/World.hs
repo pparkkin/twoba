@@ -48,9 +48,9 @@ data PlayerSlot = FirstPlayer | SecondPlayer
                 deriving ( Eq, Ord, Show )
 
 initPlayer :: PlayerSlot -> PlayerName -> Player
-initPlayer FirstPlayer n = (Player n (ActiveObject topLeft topLeft 5 0) 20)
+initPlayer FirstPlayer n = (Player n (ActiveObject topLeft topLeft 5 0 20))
   where topLeft = V2 0 0
-initPlayer SecondPlayer n = (Player n (ActiveObject bottomRight bottomRight 5 0) 20)
+initPlayer SecondPlayer n = (Player n (ActiveObject bottomRight bottomRight 5 0 20))
   -- FIXME: Don't use hard coded grid size
   where bottomRight = V2 19 19
 

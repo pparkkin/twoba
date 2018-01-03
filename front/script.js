@@ -194,52 +194,68 @@ function findEnemyData(ps, n) {
   }
 }
 
+function processInitializeGame(app, data) {
+  view.gridSize = {
+    x: data["params"][0], y: data["params"][1]
+  };
+  // Make the view size the largest multiple of grid size that fits in the window
+  view.viewSize = {
+    x: window.innerWidth - (window.innerWidth % view.gridSize.x),
+    y: window.innerHeight - (window.innerHeight % view.gridSize.x)
+  };
+  initView(app, data["grid"]);
+  state.grid = data["grid"];
+}
+
+function processPlayerMove(ws, data) {
+  ws.send(JSON.stringify({
+    tag: "PlayerMove",
+    contents: {
+      x: data.x, y: data.y
+    }
+  }));
+}
+
+function processPlayerState(data) {
+  player.location = {
+    x: data["pos"]["x"],
+    y: data["pos"]["y"]
+  };
+  if (data["pos"] != data["dst"]) {
+    player.destination = {
+      x: data["dst"]["x"],
+      y: data["dst"]["y"],
+    };
+  } else {
+    player.destination = null;
+  }
+  player.cooldown = data["cooldown"];
+  player.dirty = true;
+}
+
+function processEnemyState(data) {
+  enemy.location = {
+    x: data["pos"]["x"],
+    y: data["pos"]["y"]
+  };
+  enemy.dirty = true;
+}
+
+function processServerState(data) {
+  let p = data["player"];
+  if (p != null) { processPlayerState(p); }
+  let n = data["enemy"];
+  if (n != null) { processEnemyState(n); }
+}
+
 function processInputEvent(app, ws, e) {
   // console.log(e);
   if (e.type == "initializegame") {
-    view.gridSize = {
-      x: e.data["params"][0], y: e.data["params"][1]
-    };
-    // Make the view size the largest multiple of grid size that fits in the window
-    view.viewSize = {
-      x: window.innerWidth - (window.innerWidth % view.gridSize.x),
-      y: window.innerHeight - (window.innerHeight % view.gridSize.x)
-    };
-    initView(app, e.data["grid"]);
-    state.grid = e.data["grid"];
+    processInitializeGame(app, e.data);
   } else if (e.type == "playermove") {
-    ws.send(JSON.stringify({
-      tag: "PlayerMove",
-      contents: {
-        x: e.x, y: e.y
-      }
-    }));
+    processPlayerMove(ws, e.data);
   } else if (e.type == "serverstate") {
-    let p = e.data["player"];
-    if (p != null) {
-      player.location = {
-        x: p["pos"]["x"],
-        y: p["pos"]["y"]
-      };
-      if (p["pos"] != p["dst"]) {
-        player.destination = {
-          x: p["dst"]["x"],
-          y: p["dst"]["y"],
-        };
-      } else {
-        player.destination = null;
-      }
-      player.cooldown = p["cooldown"];
-      player.dirty = true;
-    }
-    let n = e.data["enemy"];
-    if (n != null) {
-      enemy.location = {
-        x: n["pos"]["x"],
-        y: n["pos"]["y"]
-      };
-      enemy.dirty = true;
-    }
+    processServerState(e.data);
   }
 }
 
@@ -334,8 +350,10 @@ function initView(app, grid) {
 function onMouseUp(ev) {
   input.push({
     type: "playermove",
-    x: Math.floor(ev.clientX/cellWidth()),
-    y: Math.floor(ev.clientY/cellHeight())
+    data: {
+      x: Math.floor(ev.clientX/cellWidth()),
+      y: Math.floor(ev.clientY/cellHeight())
+    }
   });
 }
 

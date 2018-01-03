@@ -131,6 +131,7 @@ addPlayer n w@(World _ _ ps)
   | otherwise = w
 
 handleInput :: PlayerName -> Message -> World -> World
+handleInput _ _ w | isGameOver w = w
 handleInput n (PlayerMove p) w = setPlayerDest n p w
 handleInput n AddPlayer w = addPlayer n w
 handleInput _ _ w = w

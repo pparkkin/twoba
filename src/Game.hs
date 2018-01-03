@@ -6,10 +6,12 @@ module Game where
 
 import Debug.Trace ( trace )
 
+import Control.Monad.Trans.State ( StateT )
 import Data.List ( find )
 import Linear.V2 ( V2(V2) )
 import System.Random ( RandomGen)
 
+import qualified Control.Monad.Trans.State as ST
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy as BL
@@ -19,6 +21,8 @@ import PathFinding
 import Serializable
 import Types
 import World
+
+type Game a = StateT World IO a
 
 decrementCooldown :: ActiveObject -> ActiveObject
 decrementCooldown o@(ActiveObject _ _ _ c _)
@@ -183,8 +187,10 @@ input n bs world =
 output :: PlayerName -> World -> BS.ByteString
 output n = serialize . ServerState . projectWorld n
 
-update :: Second -> World -> World
-update _ = updateWorld
+update :: Second -> Game ()
+update _ = do
+  w <- ST.get
+  ST.put (updateWorld w)
 
 newWorld :: RandomGen g => GameParams -> g -> World
 newWorld p@(GameParams (x, y)) seed = World.newWorld p seed x y

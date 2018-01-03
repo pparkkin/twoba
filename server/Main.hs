@@ -11,6 +11,7 @@ import Control.Concurrent.STM.TVar ( TVar
                                    , writeTVar
                                    )
 import Control.Monad
+import Control.Monad.IO.Class ( liftIO )
 import Data.ByteString ( ByteString )
 import Data.Text.Encoding ( decodeUtf8 )
 import Network.Wai ( Application )
@@ -26,6 +27,7 @@ import System.Random ( getStdGen )
 import Text.Printf
 import Web.Scotty
 
+import qualified Control.Monad.Trans.State as ST
 import qualified Data.ByteString.Char8 as C8
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -53,27 +55,30 @@ displayForPlayer :: World -> PlayerName -> WS.Connection -> IO ()
 displayForPlayer world name conn =
   WS.sendTextData conn (output name world)
 
-display :: ConnectionMap PlayerName -> World -> IO ()
-display ps world =
-  mapConnections_ (displayForPlayer world) ps
+display :: ConnectionMap PlayerName -> Game ()
+display ps = do
+  world <- ST.get
+  liftIO $ mapConnections_ (displayForPlayer world) ps
 
-processInput :: EventPipe Event -> World -> IO World
-processInput p w = do
-  msgs <- takeEvents p
-  return $ foldr (\(n, msg) w' -> input n msg w') w msgs
+processInput :: EventPipe Event -> Game ()
+processInput p = do
+  msgs <- liftIO $ takeEvents p
+  w <- ST.get
+  ST.put $ foldr (\(n, msg) w' -> input n msg w') w msgs
 
-gameLoop :: World -> Second -> Second -> ConnectionMap PlayerName -> EventPipe Event -> IO ()
-gameLoop world beginTime dt conns input = do
-  world' <- processInput input world
-  let world'' = update dt world'
-  display conns world''
+gameLoop :: Second -> Second -> ConnectionMap PlayerName -> EventPipe Event -> Game ()
+gameLoop beginTime dt conns input = do
+  processInput input
+  update dt
+  display conns
 
-  endTime <- getTimeInSeconds
+  endTime <- liftIO $ getTimeInSeconds
   let dt' = endTime - beginTime
   when (dt' < frameTime) $ do
     let sleepTime = floor ((frameTime - dt') * (10 ** 6))
-    threadDelay sleepTime
-  gameLoop world'' endTime dt conns input
+    liftIO $ threadDelay sleepTime
+
+  gameLoop endTime dt conns input
 
 getTimeInSeconds :: IO Double
 getTimeInSeconds = do
@@ -94,7 +99,7 @@ newGame params = do
 runGame :: GameContext -> IO ()
 runGame g@(GameContext params ps e w) = do
   time <- getTimeInSeconds
-  gameLoop w time frameTime ps e
+  ST.evalStateT (gameLoop time frameTime ps e) w
 
 main :: IO ()
 main = do

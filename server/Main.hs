@@ -51,20 +51,18 @@ data GameContext = GameContext
 
 type Event = (PlayerName, ByteString)
 
-displayForPlayer :: World -> PlayerName -> WS.Connection -> IO ()
-displayForPlayer world name conn =
-  WS.sendTextData conn (output name world)
+displayForPlayer :: PlayerName -> WS.Connection -> Game ()
+displayForPlayer name conn = do
+  o <- output name
+  liftIO $ WS.sendTextData conn o
 
 display :: ConnectionMap PlayerName -> Game ()
-display ps = do
-  world <- ST.get
-  liftIO $ mapConnections_ (displayForPlayer world) ps
+display ps = mapConnections_ displayForPlayer ps
 
 processInput :: EventPipe Event -> Game ()
 processInput p = do
   msgs <- liftIO $ takeEvents p
-  w <- ST.get
-  ST.put $ foldr (\(n, msg) w' -> input n msg w') w msgs
+  sequence_ $ map (\(n, bs) -> input n bs) msgs
 
 gameLoop :: Second -> Second -> ConnectionMap PlayerName -> EventPipe Event -> Game ()
 gameLoop beginTime dt conns input = do

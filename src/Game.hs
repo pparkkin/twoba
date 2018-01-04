@@ -6,6 +6,9 @@ module Game where
 
 import Debug.Trace ( trace )
 
+import Control.Monad ( when
+                     , unless
+                     )
 import Control.Monad.Trans.State ( StateT )
 import Data.List ( find )
 import Linear.V2 ( V2(V2) )
@@ -46,8 +49,8 @@ moveObject d o = o { pos = d }
 resetDestination :: ActiveObject -> ActiveObject
 resetDestination o = o { dst = pos (o :: ActiveObject) }
 
-isEnemy  :: World -> PlayerName -> Position -> Bool
-isEnemy w n p =
+isEnemy  :: World -> Position -> PlayerName -> Bool
+isEnemy w p n =
   case enemyObjectFor n w of
     Nothing -> False
     Just e -> p == pos (e :: Object)
@@ -58,7 +61,10 @@ isWall w p = not $ canMoveTo w (x, y)
     (V2 x y) = p
 
 canMove :: World -> (PlayerName, ActiveObject) -> Position -> Bool
-canMove w (n, _) p = not (isEnemy w n p) && not (isWall w p)
+canMove w (n, _) p = not (isEnemy w p n) && not (isWall w p)
+
+canSetDest :: World -> Position -> Bool
+canSetDest w p = not (isWall w p)
 
 objectDistance :: ActiveObject -> ActiveObject -> Int
 objectDistance o1 o2 = distance (x1, y1) (x2, y2)
@@ -85,18 +91,24 @@ movePlayer w p@(Player n o@(ActiveObject l d _ c _))
         | canMove w (n, o) (V2 x y) = (False, resetCooldown . moveObject (V2 x y) $ o)
         | otherwise = (True, decrementCooldown . resetDestination $ o)
 
-movePlayers :: World -> World
-movePlayers w@(World _ _ ps) = w { players = ps' }
-  where
+movePlayers :: Game ()
+movePlayers = do
+  w <- ST.get
+  let
+    ps = players w
     ps' = map (movePlayer w) ps
+  ST.put $ w { players = ps' }
 
-attackPlayers :: World -> World
-attackPlayers w@(World _ _ ps@(p1:p2:[])) = w { players = ps' }
-  where
-    ps' = if playerDistance p1 p2 <= 1
-            then map (decrementPlayerHp 1) ps
-            else ps
-attackPlayers w = w
+attackPlayers :: Game ()
+attackPlayers = do
+  w <- ST.get
+  when (length (players w) == 2) $ do
+    let
+      ps@(p1:p2:[]) = players w
+      ps' = if playerDistance p1 p2 <= 1
+              then map (decrementPlayerHp 1) ps
+              else ps
+    ST.put $ w { players = ps' }
 
 isDead :: Player -> Bool
 isDead (Player _ o) = hp o <= 0
@@ -104,41 +116,49 @@ isDead (Player _ o) = hp o <= 0
 isGameOver :: World -> Bool
 isGameOver (World _ _ ps) = or (map isDead ps)
 
-updateWorld :: World -> World
-updateWorld w =
-  if isGameOver w
-    then w
-    else attackPlayers . movePlayers $ w
+updateWorld :: Game ()
+updateWorld = do
+  w <- ST.get
+  unless (isGameOver w) $ do
+    movePlayers
+    attackPlayers
 
 setObjectDest :: Position -> ActiveObject -> ActiveObject
 setObjectDest p o = o { dst = p }
 
-setPlayerDest :: PlayerName -> Position -> World -> World
-setPlayerDest n p@(V2 x y) w@(World _ _ ps) = w { players = aux ps }
+setPlayerDest :: PlayerName -> Position -> Game ()
+setPlayerDest n p@(V2 x y) = do
+  w <- ST.get
+  ST.put $ w { players = aux w (players w) }
   where
-    aux [] = []
-    aux ((Player n' o):rs)
-      | n' == n = (Player n' (setDest o)) : rs
-      | otherwise = (Player n' o) : aux rs
-    setDest o =
-      if not (isWall w p) && pathLength w ep cur p <= speed o
+    aux _ [] = []
+    aux w ((Player n' o):rs)
+      | n' == n = (Player n' (setDest w o)) : rs
+      | otherwise = (Player n' o) : aux w rs
+    setDest w o =
+      if canSetDest w p && pathLength w ep cur p <= speed o
         then setObjectDest p o
         else o
       where
         cur = pos (o :: ActiveObject)
         ep = moveBlockListCFor n w
 
-addPlayer :: PlayerName -> World -> World
-addPlayer n w@(World _ _ ps)
-  | length ps == 0 = w { players = initPlayer FirstPlayer n : ps }
-  | length ps == 1 = w { players = initPlayer SecondPlayer n : ps }
-  | otherwise = w
+addPlayer :: PlayerName -> Game ()
+addPlayer n = do
+  w <- ST.get
+  case length (players w) of
+    0 -> ST.put $ w { players = initPlayer FirstPlayer n : (players w) }
+    1 -> ST.put $ w { players = initPlayer SecondPlayer n : (players w) }
+    _ -> return ()
 
-handleInput :: PlayerName -> Message -> World -> World
-handleInput _ _ w | isGameOver w = w
-handleInput n (PlayerMove p) w = setPlayerDest n p w
-handleInput n AddPlayer w = addPlayer n w
-handleInput _ _ w = w
+handleInput :: PlayerName -> Message -> Game ()
+handleInput n AddPlayer = do
+  w <- ST.get
+  unless (isGameOver w) (addPlayer n)
+handleInput n (PlayerMove p) = do
+  w <- ST.get
+  unless (isGameOver w) (setPlayerDest n p)
+handleInput _ _ = return ()
 
 playerLookup :: PlayerName -> [Player] -> Maybe Player
 playerLookup _ [] = Nothing
@@ -146,10 +166,11 @@ playerLookup n (p:ps)
   | name p == n = Just p
   | otherwise = playerLookup n ps
 
-playerObjectFor :: PlayerName -> World -> ActiveObject
-playerObjectFor n w =
+playerObjectFor :: PlayerName -> Game ActiveObject
+playerObjectFor n = do
+  w <- ST.get
   case playerLookup n (players w) of
-    Just a -> object a
+    Just a -> return $ object a
 
 moveBlockListFor :: PlayerName -> World -> [Position]
 moveBlockListFor n w =
@@ -169,28 +190,30 @@ enemyObjectFor n w = enemyObject (players w)
       | name p /= n = Just $ Object (pos (object p :: ActiveObject)) (hp (object p) <= 0)
       | otherwise = enemyObject ps
 
-projectWorld :: PlayerName -> World -> WorldProjection
-projectWorld n w = WorldProjection player enemy
-  where
-    player = playerObjectFor n w
+projectWorld :: PlayerName -> Game WorldProjection
+projectWorld n = do
+  player <- playerObjectFor n
+  w <- ST.get
+  let
     enemy = enemyObjectFor n w
+  return $ WorldProjection player enemy
 
 worldInit :: World -> WorldInit
 worldInit (World params grid _) = WorldInit params grid
 
-input :: PlayerName -> BS.ByteString -> World -> World
-input n bs world =
+input :: PlayerName -> BS.ByteString -> Game ()
+input n bs =
   case deserialize bs of
-    Just m -> handleInput n m world
-    Nothing -> world
+    Just m -> handleInput n m
+    Nothing -> return ()
 
-output :: PlayerName -> World -> BS.ByteString
-output n = serialize . ServerState . projectWorld n
+output :: PlayerName -> Game BS.ByteString
+output n = do
+  p <- projectWorld n
+  return $ serialize (ServerState p)
 
 update :: Second -> Game ()
-update _ = do
-  w <- ST.get
-  ST.put (updateWorld w)
+update _ = updateWorld
 
 newWorld :: RandomGen g => GameParams -> g -> World
 newWorld p@(GameParams (x, y)) seed = World.newWorld p seed x y

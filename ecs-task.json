@@ -1,0 +1,14 @@
+[
+  {
+    "name": "twoba",
+    "image": "pparkkin/twoba",
+    "memory": 512,
+    "cpu": 512,
+    "portMappings": [
+      {
+        "containerPort": 33000,
+        "hostPort": 33000
+      }
+    ]
+  }
+]

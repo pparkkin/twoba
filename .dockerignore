@@ -1,0 +1,10 @@
+Dockerfile
+
+.git
+.gitignore
+
+.stack-work
+
+.terraform
+*.tf
+terraform.*

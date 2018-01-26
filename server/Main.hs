@@ -106,7 +106,7 @@ main = do
   putStrLn "Starting new game."
   g <- newGame (GameParams (20, 20))
   forkIO (runGame g)
-  Warp.runSettings (Warp.setPort 3000 Warp.defaultSettings)
+  Warp.runSettings (Warp.setPort 33000 Warp.defaultSettings)
     $ WaiWS.websocketsOr WS.defaultConnectionOptions (wsapp g) app
 
 front :: IO Application

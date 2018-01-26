@@ -1,0 +1,17 @@
+aeson
+bytestring
+containers
+linear
+random
+scotty
+split
+stm
+text
+transformers
+wai
+wai-extra
+wai-middleware-static
+wai-websockets
+warp
+websockets
+

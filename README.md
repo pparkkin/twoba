@@ -27,5 +27,5 @@ An execution plan has been generated and is shown below.
 twoba-name = <instance dns name>
 ```
 
-Open http://<instance dns name>:33000/ in a browser.
+Open http://&lt;instance dns name&gt;:33000/ in a browser.
 

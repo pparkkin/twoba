@@ -24,8 +24,8 @@ $ terraform apply
 
 An execution plan has been generated and is shown below.
 ...
-twoba-name = <instance dns name>
+lb-name = <instance dns name>
 ```
 
-Open http://&lt;instance dns name&gt;:33000/ in a browser.
+Open http://&lt;lb-name&gt;/ in a browser.
 

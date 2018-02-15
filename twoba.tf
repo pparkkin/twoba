@@ -17,6 +17,14 @@ resource "aws_iam_role_policy" "twoba_instance" {
 
 ## Security Stuffs
 
+# Reference to default VPC
+resource "aws_default_vpc" "default" { }
+
+# Reference to subnets for default VPC
+data "aws_subnet_ids" "default" {
+  vpc_id = "${aws_default_vpc.default.id}"
+}
+
 resource "aws_key_pair" "treehouse" {
   key_name = "paavo_key"
   public_key = "${var.public_key}"
@@ -54,6 +62,23 @@ resource "aws_security_group" "http_out" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   egress {
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "http_in" {
+  name = "http_in"
+
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
     from_port = 443
     to_port = 443
     protocol = "tcp"
@@ -128,6 +153,46 @@ resource "aws_ecs_service" "twoba" {
   task_definition = "${aws_ecs_task_definition.twoba.arn}"
   cluster = "${aws_ecs_cluster.twoba.id}"
   desired_count = 1
+
+  load_balancer {
+    target_group_arn = "${aws_lb_target_group.twoba.arn}"
+    container_name = "twoba"
+    container_port = 33000
+  }
+  # The entire LB needs to be ready before we attach it to ECS
+  depends_on = ["aws_lb_listener.twoba"]
+}
+
+## Load Balancer
+
+resource "aws_lb_target_group" "twoba" {
+  port = 80
+  protocol = "HTTP"
+  vpc_id = "${aws_default_vpc.default.id}"
+}
+
+resource "aws_lb" "twoba" {
+  internal = false
+  subnets = ["${data.aws_subnet_ids.default.ids}"]
+  security_groups = [
+    "${aws_security_group.allow_twoba.id}",
+    "${aws_security_group.http_in.id}"
+  ]
+}
+
+output "lb-name" {
+  value = "${aws_lb.twoba.dns_name}"
+}
+
+resource "aws_lb_listener" "twoba" {
+  load_balancer_arn = "${aws_lb.twoba.arn}"
+  port = 80
+  protocol = "HTTP"
+
+  default_action {
+    target_group_arn = "${aws_lb_target_group.twoba.arn}"
+    type = "forward"
+  }
 }
 
 ## Ubuntu Desktop (for testing)

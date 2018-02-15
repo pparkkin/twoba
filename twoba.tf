@@ -197,22 +197,22 @@ resource "aws_lb_listener" "twoba" {
 
 ## Ubuntu Desktop (for testing)
 
-resource "aws_instance" "desktop" {
-  ami = "ami-5055cd3f"
-  instance_type = "t2.medium"
-  security_groups = [
-    "${aws_security_group.allow_ssh.name}",
-    "${aws_security_group.allow_vnc.name}",
-    "${aws_security_group.http_out.name}",
-    "${aws_security_group.allow_twoba.name}"
-  ]
-  key_name = "${aws_key_pair.treehouse.key_name}"
-}
+#resource "aws_instance" "desktop" {
+#  ami = "ami-5055cd3f"
+#  instance_type = "t2.medium"
+#  security_groups = [
+#    "${aws_security_group.allow_ssh.name}",
+#    "${aws_security_group.allow_vnc.name}",
+#    "${aws_security_group.http_out.name}",
+#    "${aws_security_group.allow_twoba.name}"
+#  ]
+#  key_name = "${aws_key_pair.treehouse.key_name}"
+#}
 
 # $ sudo apt-get update && sudo apt-get install --no-install-recommends lubuntu-desktop
 # $ sudo apt-get install tightvncserver
 # $ vncserver # and configure
-output "desktop-name" {
-  value = "${aws_instance.desktop.public_dns}"
-}
+#output "desktop-name" {
+#  value = "${aws_instance.desktop.public_dns}"
+#}
 

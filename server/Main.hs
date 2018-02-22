@@ -17,6 +17,7 @@ import Data.Text.Encoding ( decodeUtf8 )
 import Network.Wai ( Application )
 import Network.Wai.Middleware.RequestLogger
 import Network.Wai.Middleware.Static ( staticPolicy
+                                     , hasPrefix
                                      , noDots
                                      , addBase
                                      , (>->)
@@ -112,8 +113,8 @@ main = do
 front :: IO Application
 front = scottyApp $ do
   middleware logStdoutDev
-  middleware $ staticPolicy (noDots >-> addBase "front")
-  get "/" $ file "front/index.html"
+  middleware $ staticPolicy (noDots >-> hasPrefix "game" >-> addBase "front")
+  get "/game/" $ file "front/game/index.html"
 
 wsapp :: GameContext -> WS.ServerApp
 wsapp g@(GameContext params ps e w) pending = do

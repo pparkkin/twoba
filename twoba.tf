@@ -195,6 +195,21 @@ resource "aws_lb_listener" "twoba" {
   }
 }
 
+resource "aws_lb_listener_rule" "game" {
+  listener_arn = "${aws_lb_listener.twoba.arn}"
+  priority = 100
+
+  action {
+    target_group_arn = "${aws_lb_target_group.twoba.arn}"
+    type = "forward"
+  }
+
+  condition {
+    field  = "path-pattern"
+    values = ["/game"]
+  }
+}
+
 ## Ubuntu Desktop (for testing)
 
 #resource "aws_instance" "desktop" {

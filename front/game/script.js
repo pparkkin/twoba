@@ -448,7 +448,7 @@ function setup() {
 
   window.addEventListener('mouseup', onMouseUp);
 
-  let ws = new WebSocket('ws://' + location.host);
+  let ws = new WebSocket('ws://' + location.host + '/game/');
   ws.onmessage = onMessage;
   player.name = random_name();
   ws.onopen = function (event) {
